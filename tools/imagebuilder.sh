@@ -28,7 +28,7 @@ LAYOUT="2048,65536,c\n67584,,83"
 clear
 echo -e "$HSTAR Checking requirements (1/12): " #{{{
 echo -en "\t$HSTAR Is ${DEVICE} exists ? "
-ls $DEVICE > /dev/null 2>&1
+ls $DEVICE >> $LOG 2>&1
 BUFFER=$?
 printResult $BUFFER
 [[ $BUFFER -ne 0 ]] && exit 1
@@ -41,7 +41,7 @@ checkConnectivity
 #}}}
 
 echo -en "$HSTAR Building working dir (2/12): " #{{{
-([[ -d $WDIR ]] || mkdir "$WDIR") && cd "$WDIR" > /dev/null 2>&1
+([[ -d $WDIR ]] || mkdir "$WDIR") && cd "$WDIR" >> $LOG 2>&1
 printResult $?
 #}}}
 
@@ -73,7 +73,8 @@ fi
 #}}}
 
 echo -en "$HSTAR Partitionning the sdcard (8/12): " #{{{
-echo -e $LAYOUT | sfdisk $DEVICE > /dev/null 2>&1
+echo -e $LAYOUT | sfdisk $DEVICE >> $LOG 2>&1
+partprobe $DEVICE >> $LOG 2>&1
 BUFFER=$?
 printResult $BUFFER
 [[ $BUFFER -eq 0 ]] || exit 1
@@ -82,12 +83,12 @@ printResult $BUFFER
 echo -e "$HSTAR Formating the sdcard (9/12): " #{{{
 echo -en "\t$HSTAR ${DEVICE}p1 in FAT16: "
 
-mkfs.vfat -F 16 ${DEVICE}p1 > /dev/null 2>&1
+mkfs.vfat -F 16 ${DEVICE}p1 >> $LOG 2>&1
 BUFFER=$?
 printResult $BUFFER
 [[ $BUFFER -eq 0 ]] || exit 1
 echo -en "\t$HSTAR ${DEVICE}p2 in ext4: "
-mkfs.ext4 $TAG_EXT4 ${DEVICE}p2 > /dev/null 2>&1
+mkfs.ext4 $TAG_EXT4 ${DEVICE}p2 >> $LOG 2>&1
 BUFFER=$?
 printResult $BUFFER
 [[ $BUFFER -eq 0 ]] || exit 1
@@ -95,15 +96,15 @@ printResult $BUFFER
 
 echo -e "$HSTAR Mounting partitions (10/12): " #{{{
 echo -en "\t$HSTAR root: "
-[[ -d $MOUNT_POINT ]] || mkdir $MOUNT_POINT > /dev/null 2>&1
+[[ -d $MOUNT_POINT ]] || mkdir $MOUNT_POINT >> $LOG 2>&1
 mount ${DEVICE}p2 $MOUNT_POINT
 BUFFER=$?
 printResult $BUFFER
 [[ $BUFFER -eq 0 ]] || exit 1
 echo -en "\t$HSTAR boot: "
-mkdir ${MOUNT_POINT}/boot > /dev/null 2>&1
+mkdir ${MOUNT_POINT}/boot >> $LOG 2>&1
 if [[ $? -ne 0 ]]; then
-	umount $MOUNT_POINT > /dev/null 2>&1
+	umount $MOUNT_POINT >> $LOG 2>&1
 	printResult 1
 	exit 1
 fi
@@ -114,14 +115,14 @@ printResult $BUFFER
 #}}}
 
 echo -en "$HSTAR Expanding the image on sdcard (11/12): " #{{{
-tar -xJpf $FILE -C $MOUNT_POINT > /dev/null 2>&1
+tar -xJpf $FILE -C $MOUNT_POINT >> $LOG 2>&1
 BUFFER=$?
 printResult $BUFFER
 if [[ $BUFFER -ne 0 ]]; then
 	echo -e "\tCheck the free space in your sdcard."
 	echo -e "\tWait until all the filesystems are unmounted..."
 	sync
-	umount ${MOUNT_POINT}/{boot,} > /dev/null 2>&1
+	umount ${MOUNT_POINT}/{boot,} >> $LOG 2>&1
 	exit 1;
 fi
 #}}}
@@ -130,13 +131,13 @@ echo -en "$HSTAR Cleaning all the stuffs (12/12): " #{{{
 echo -en "\t$HSTAR Syncing sdcard: "
 sync && printResult 0
 echo -en "\t$HSTAR Unmounting directory: "
-umount ${MOUNT_POINT}/{boot,} > /dev/null 2>&1
+umount ${MOUNT_POINT}/{boot,} >> $LOG 2>&1
 BUFFER=$?
 printResult $BUFFER
 [[ $BUFFER -ne 0 ]] && exit 1
-cd .. > /dev/null 2>&1
+cd .. >> $LOG 2>&1
 echo -en "\t$HSTAR Deleting stuffs: "
-rm -Rf $WDIR > /dev/null 2>&1
+rm -Rf $WDIR >> $LOG 2>&1
 BUFFER=$?
 printResult $BUFFER
 if [[ $BUFFER -ne 0 ]]; then

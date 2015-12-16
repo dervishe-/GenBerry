@@ -33,7 +33,7 @@ checkConnectivity
 #}}}
 
 echo -en "$HSTAR Building working dir (2/11): " #{{{
-([[ -d $WDIR ]] || mkdir "$WDIR") && cd "$WDIR" > /dev/null 2>&1
+([[ -d $WDIR ]] || mkdir "$WDIR") && cd "$WDIR" >> $LOG 2>&1
 printResult $?
 #}}}
 
@@ -65,7 +65,7 @@ fi
 #}}}
 
 echo -en "$HSTAR Expanding the portage tree (8/11): " #{{{
-tar -xJpf $FILE > /dev/null 2>&1
+tar -xJpf $FILE >> $LOG 2>&1
 BUFFER=$?
 printResult $BUFFER
 if [[ $BUFFER -ne 0 ]]; then
@@ -77,15 +77,15 @@ fi
 #}}}
 
 echo -en "$HSTAR Building the Portage Squash image (9/11): " #{{{
-mksquashfs $LOCAL_PORTAGE_DIR $SQUASH_FILE > /dev/null 2>&1
+mksquashfs $LOCAL_PORTAGE_DIR $SQUASH_FILE >> $LOG 2>&1
 BUFFER=$?
 printResult $BUFFER
 [[ $BUFFER -ne 0 ]] && exit 1
 #}}}
 
 echo -en "$HSTAR Testing the new image (10/11): " #{{{
-[[ -d $TEST_DIR ]] || mkdir $TEST_DIR > /dev/null 2>&1
-mount -o loop -t squashfs $SQUASH_FILE $TEST_DIR > /dev/null 2>&1
+[[ -d $TEST_DIR ]] || mkdir $TEST_DIR >> $LOG 2>&1
+mount -o loop -t squashfs $SQUASH_FILE $TEST_DIR >> $LOG 2>&1
 BUFFER=$?
 printResult $BUFFER
 if [[ $BUFFER -ne 0 ]]; then
@@ -98,15 +98,15 @@ umount $TEST_DIR
 #}}}
 
 echo -en "$HSTAR Cleaning all the stuffs (11/11): " #{{{
-cd .. > /dev/null 2>&1
-mv $WDIR/$SQUASH_FILE . > /dev/null 2>&1
+cd .. >> $LOG 2>&1
+mv $WDIR/$SQUASH_FILE . >> $LOG 2>&1
 local BUFFER=$?
 if [[ $BUFFER -ne 0 ]]; then
 	printResult $BUFFER
 	echo -e "\tUnable to move the squashfs file: '$SQUASH_FILE' from the temporary directory"
 	exit 1
 fi
-rm -Rf $WDIR > /dev/null 2>&1
+rm -Rf $WDIR >> $LOG 2>&1
 BUFFER=$?
 printResult $BUFFER
 if [[ $BUFFER -ne 0 ]]; then

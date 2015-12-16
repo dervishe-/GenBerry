@@ -10,6 +10,13 @@
 # Some kind of library
 #
 
+LOG=/tmp/genBerry.log
+
+# Log file Header
+echo -e "\n\n#############################################################" >> $LOG
+date >> $LOG
+echo -e "\n\n" >> $LOG
+
 HSTAR="\e[1;32m*\e[0m\e[37m"
 
 function printResult() #{{{
@@ -22,7 +29,7 @@ function printResult() #{{{
 #	Take 1 argument: the location of the file to retrieve
 function getFile() #{{{
 {
-	wget $1 > /dev/null 2>&1
+	wget $1 >> $LOG 2>&1
 	local BUFFER=$?
 	printResult $BUFFER
 	if [[ $BUFFER -ne 0 ]]; then 
@@ -42,9 +49,9 @@ function getFile() #{{{
 function retrieveFile() #{{{
 {
 	if [[ -f $1 ]]; then
-		md5sum --quiet -c $2 > /dev/null 2>&1
+		md5sum --quiet -c $2 >> $LOG 2>&1
 		if [[ $? -ne 0 ]]; then
-			rm $1 > /dev/null 2>&1
+			rm $1 >> $LOG 2>&1
 			getFile $3/$1
 		else
 			printResult 0
@@ -57,7 +64,7 @@ function retrieveFile() #{{{
 
 function checkConnectivity() #{{{
 {
-	ping -c 1 -w 2 www.google.com > /dev/null 2>&1
+	ping -c 1 -w 2 www.google.com >> $LOG 2>&1
 	local BUFFER=$?
 	printResult $BUFFER
 	[[ $BUFFER -ne 0 ]] && exit 1
@@ -90,7 +97,7 @@ function checkGPG() #{{{
 #	Take 1 argument: the hash file of the file to test
 function checkFingerprint() #{{{
 {
-	md5sum --quiet -c $1 > /dev/null 2>&1
+	md5sum --quiet -c $1 >> $LOG 2>&1
 	local BUFFER=$?
 	printResult $BUFFER
 	rm $1
@@ -106,7 +113,7 @@ function checkFingerprint() #{{{
 #		* The file name
 function checkSignature() #{{{
 {
-	$GPG --verify $1 $2 > /dev/null 2>&1
+	$GPG --verify $1 $2 >> $LOG 2>&1
 	BUFFER=$?
 	printResult $BUFFER
 	rm $1
