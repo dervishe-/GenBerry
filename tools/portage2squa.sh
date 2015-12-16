@@ -11,7 +11,7 @@
 #
 
 #{{{ Parameters
-ARCH_LOCATION=http://distfiles.gentoo.org/snapshots
+LOCATION=http://distfiles.gentoo.org/snapshots
 FILE=portage-latest.tar.xz
 SIG=${FILE}.gpgsig
 HASH=${FILE}.md5sum
@@ -23,75 +23,49 @@ LOCAL_PORTAGE_DIR=portage
 . ./helpers.sh
 
 clear
-echo -en "\n\n$HSTAR Prepare environment (1/12): " #{{{
-[[ ! -d $WDIR ]] && mkdir "$WDIR"
-cd "$WDIR"
-GPG=$(whereis gpg | awk '{ print $2}')
-if [[ $GPG = '' ]]; then
-	printResult 1
-	echo -e "\tgpg is needed but not installed."
-	exit 1
-fi
-printResult 0
-#}}}
-
-echo -en "$HSTAR Test the connectivity (2/12): " #{{{
+echo -e "$HSTAR Checking requirements (1/11): " #{{{
+echo -en "\t$HSTAR Is gpg installed ? "
+checkGPG
+echo -en "\t$HSTAR Are you root ? "
+checkRoot
+echo -en "\t$HSTAR Are you connected ? "
 checkConnectivity
 #}}}
 
-echo -en "$HSTAR Retrieve the fingerprint (3/12): " #{{{
+echo -en "$HSTAR Building working dir (2/11): " #{{{
+([[ -d $WDIR ]] || mkdir "$WDIR") && cd "$WDIR" > /dev/null 2>&1
+printResult $?
+#}}}
+
+echo -en "$HSTAR Retrieving the fingerprint (3/11): " #{{{
 [[ -f $HASH ]] && rm $HASH
-getFile $ARCH_LOCATION/$HASH
+getFile $LOCATION/$HASH
 #}}}
 
-echo -en "$HSTAR Check the local file with the fingerprint (4/12): " #{{{
-md5sum --quiet -c $HASH > /dev/null 2>&1
-BUFFER=$?
-printResult 0
-OVERWRITE=1
-if [[ $BUFFER -eq 0 ]]; then 
-	echo -ne "\tThe archive is the same, would you continue anyway ? (y/N) "
-	read REP
-	[[ $REP =~ ^[yY](es)?$ ]] && OVERWRITE=0 || exit 0
-fi
+echo -en "$HSTAR Retrieving the portage archive (4/11): " #{{{
+retrieveFile $FILE $HASH $LOCATION
 #}}}
 
-echo -en "$HSTAR Retrieve portage archive (5/12): " #{{{
-[[ $OVERWRITE = 0 ]] && printResult $OVERWRITE || getFile $ARCH_LOCATION/$FILE
+echo -en "$HSTAR Checking file's fingerprint (5/11): " #{{{
+checkFingerprint $HASH
 #}}}
 
-echo -en "$HSTAR Verify the new file's fingerprint (6/12): " #{{{
-md5sum --quiet -c $HASH > /dev/null 2>&1
-BUFFER=$?
-printResult $BUFFER
-if [[ $BUFFER -eq 1 ]]; then 
-	rm $HASH
-	echo -e "\tBad fingerprint check result, archive corrupted !!!"
-	exit 1;
-fi
-rm $HASH
+echo -en "$HSTAR Retrieving the file's signature (6/11): " #{{{
+getFile $LOCATION/$SIG
 #}}}
 
-echo -en "$HSTAR Retrieve the file's signature (7/12): " #{{{
-getFile $ARCH_LOCATION/$SIG
-#}}}
-
-echo -en "$HSTAR Check file's signature (8/12): " #{{{
-$GPG --verify $SIG $FILE > /dev/null 2>&1
-BUFFER=$?
-printResult $BUFFER
-if [[ $BUFFER -ne 0 ]]; then
-	rm $SIG
+echo -en "$HSTAR Checking file's signature (7/11): " #{{{
+checkSignature $SIG $FILE
+if [[ $? -ne 0 ]]; then
 	echo -e "\tSignature's problem: the file don't seems to be legit..."
 	echo -e "\tPerhap's you don't have imported the Gentoo public key:"
 	echo -e "\thttps://www.gentoo.org/downloads/signatures/"
 	exit 1;
 fi
-rm $SIG
 #}}}
 
-echo -en "$HSTAR Expand the portage tree (9/12): " #{{{
-tar -xJf $FILE > /dev/null 2>&1
+echo -en "$HSTAR Expanding the portage tree (8/11): " #{{{
+tar -xJpf $FILE > /dev/null 2>&1
 BUFFER=$?
 printResult $BUFFER
 if [[ $BUFFER -ne 0 ]]; then
@@ -102,14 +76,14 @@ if [[ $BUFFER -ne 0 ]]; then
 fi
 #}}}
 
-echo -en "$HSTAR Build the Portage Squash image (10/12): " #{{{
+echo -en "$HSTAR Building the Portage Squash image (9/11): " #{{{
 mksquashfs $LOCAL_PORTAGE_DIR $SQUASH_FILE > /dev/null 2>&1
 BUFFER=$?
 printResult $BUFFER
 [[ $BUFFER -ne 0 ]] && exit 1
 #}}}
 
-echo -en "$HSTAR Test the new image (11/12): " #{{{
+echo -en "$HSTAR Testing the new image (10/11): " #{{{
 [[ -d $TEST_DIR ]] || mkdir $TEST_DIR > /dev/null 2>&1
 mount -o loop -t squashfs $SQUASH_FILE $TEST_DIR > /dev/null 2>&1
 BUFFER=$?
@@ -123,7 +97,7 @@ fi
 umount $TEST_DIR
 #}}}
 
-echo -en "$HSTAR Clean all the stuffs (12/12): " #{{{
+echo -en "$HSTAR Cleaning all the stuffs (11/11): " #{{{
 cd .. > /dev/null 2>&1
 mv $WDIR/$SQUASH_FILE . > /dev/null 2>&1
 local BUFFER=$?
