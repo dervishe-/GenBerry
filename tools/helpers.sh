@@ -85,12 +85,10 @@ function checkRoot() #{{{
 
 function checkGPG() #{{{
 {
-	GPG=$(whereis gpg | awk '{ print $2}')
-	if [[ $GPG = '' ]]; then
-		printResult 1
-		exit 1
-	fi
-	printResult 0
+	GPG=$(which gpg)
+	local BUFFER=$?
+	printResult $BUFFER
+	[[ $BUFFER -eq 1 ]] && exit 1
 }
 #}}}
 
