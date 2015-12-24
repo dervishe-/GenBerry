@@ -100,7 +100,7 @@ umount $TEST_DIR
 echo -en "$HSTAR Cleaning all the stuffs (11/11): " #{{{
 cd .. >> $LOG 2>&1
 mv $WDIR/$SQUASH_FILE . >> $LOG 2>&1
-local BUFFER=$?
+BUFFER=$?
 if [[ $BUFFER -ne 0 ]]; then
 	printResult $BUFFER
 	echo -e "\tUnable to move the squashfs file: '$SQUASH_FILE' from the temporary directory"
