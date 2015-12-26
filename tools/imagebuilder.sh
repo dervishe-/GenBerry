@@ -39,6 +39,10 @@ checkRoot
 echo -en "\t$HSTAR Are you connected ? "
 checkConnectivity
 #}}}
+echo -ne "\n\e[1;31mAll the things seems ok, would you like to install the image on ${DEVICE} (yes|[No]) ?\e[0m "
+read rep
+[[ $rep =~ [Yy](es)? ]] || exit 1
+echo -e "\n"
 
 echo -en "$HSTAR Building working dir (2/12): " #{{{
 ([[ -d $WDIR ]] || mkdir "$WDIR") && cd "$WDIR" >> $LOG 2>&1
@@ -127,7 +131,7 @@ if [[ $BUFFER -ne 0 ]]; then
 fi
 #}}}
 
-echo -en "$HSTAR Cleaning all the stuffs (12/12): " #{{{
+echo -e "$HSTAR Cleaning all the stuffs (12/12): " #{{{
 echo -en "\t$HSTAR Syncing sdcard: "
 sync && printResult 0
 echo -en "\t$HSTAR Unmounting directory: "
