@@ -8,20 +8,29 @@
 # 
 #
 # This script build an sdcard image
+#	Parameters list:
+#		rPi type 1(A, A+, B, B+) or 2
 #
 
 #{{{ Parameters
-LOCATION=http://localhost/
-FILE=archive.tar.xz
+LOCATION=https:///
+FILE=genBerry.tar.xz
 SIG=${FILE}.gpgsig
 HASH=${FILE}.md5sum
 DEVICE=/dev/mmcblk0
 MOUNT_POINT=./mnt
 WDIR=./repository
+RASP_TYPE="$1"
+echo $RASP_TYPE
+# Check for a correct raspberry type
+if ! [[ $RASP_TYPE -eq 1 ]] && ! [[ $RASP_TYPE -eq 2 ]]; then
+	echo "Bad RaspBerry type (1|2): $RASP_TYPE"
+	exit 1
+fi
 # Here we assume that each sector's size is 512 bytes
 DISK_SIZE=$(($(sfdisk -s $DEVICE) * 2))
 LAYOUT="2048,65536,c\n67584,,83"
-[[ $DISK_SIZE -lt 4194304 ]] && TAG_EXT4="-N 803200" || TAG_EXT4=""
+[[ $DISK_SIZE -lt 8388608 ]] && TAG_EXT4="-T small" || TAG_EXT4=""
 #}}}
 . ./helpers.sh
 
@@ -34,6 +43,11 @@ printResult $BUFFER
 [[ $BUFFER -ne 0 ]] && exit 1
 echo -en "\t$HSTAR Is gpg installed ? "
 checkGPG
+echo -en "\t$HSTAR Is partprobe installed ? "
+which partprobe >> $LOG 2>&1
+BUFFER=$?
+printResult $BUFFER
+[[ $BUFFER -eq 1 ]] && exit 1
 echo -en "\t$HSTAR Are you root ? "
 checkRoot
 echo -en "\t$HSTAR Are you connected ? "
@@ -42,7 +56,7 @@ checkConnectivity
 echo -ne "\n\e[1;31mAll the things seems ok, would you like to install the image on ${DEVICE} (yes|[No]) ?\e[0m "
 read rep
 [[ $rep =~ [Yy](es)? ]] || exit 1
-echo -e "\n"
+echo -e "\nThe log file will be stored here: ${LOG}\n"
 
 echo -en "$HSTAR Building working dir (2/13): " #{{{
 ([[ -d $WDIR ]] || mkdir "$WDIR") && cd "$WDIR" >> $LOG 2>&1
@@ -131,14 +145,20 @@ if [[ $BUFFER -ne 0 ]]; then
 fi
 #}}}
 
-echo -e "$HSTAR Creating portage tree on squashfs (12/13): " #{{{
+echo -e "$HSTAR Installing new kernel (12/13): " #{{{
+cd .. >> $LOG 2>&1
+./kernelbuilder.sh ../../${WDIR}/$MOUNT_POINT $RASP_TYPE $LOCATION
+cd - >> $LOG 2>&1
+#}}}
+
+echo -e "$HSTAR Creating portage tree on squashfs (13/13): " #{{{
 cd .. > /dev/null 2>&1
 ${WDIR}/${MOUNT_POINT}/root/portage/portage2squa.sh
 mv ./portage.squashfs ${WDIR}/${MOUNT_POINT}/root/portage/ > /dev/null 2>&1
 cd - > /dev/null 2>&1
 #}}}
 
-echo -e "$HSTAR Cleaning all the stuffs (13/13): " #{{{
+echo -e "$HSTAR Cleaning all the stuffs (14/13): " #{{{
 echo -en "\t$HSTAR Syncing sdcard: "
 sync && printResult 0
 echo -en "\t$HSTAR Unmounting directory: "
