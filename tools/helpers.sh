@@ -11,6 +11,7 @@
 #
 
 LOG=/tmp/genBerry.log
+DELAY=3
 
 # Log file Header
 echo -e "\n\n#############################################################" >> $LOG
@@ -64,7 +65,7 @@ function retrieveFile() #{{{
 
 function checkConnectivity() #{{{
 {
-	ping -c 1 -w 2 www.google.com >> $LOG 2>&1
+	ping -c 1 -w $DELAY www.google.com >> $LOG 2>&1
 	local BUFFER=$?
 	printResult $BUFFER
 	[[ $BUFFER -ne 0 ]] && exit 1
@@ -85,7 +86,16 @@ function checkRoot() #{{{
 
 function checkGPG() #{{{
 {
-	GPG=$(which gpg)
+	which gpg >> $LOG 2>&1
+	local BUFFER=$?
+	printResult $BUFFER
+	[[ $BUFFER -eq 1 ]] && exit 1
+}
+#}}}
+
+function checkKBT() #{{{
+{
+	which imagetool-uncompressed.py >> $LOG 2>&1
 	local BUFFER=$?
 	printResult $BUFFER
 	[[ $BUFFER -eq 1 ]] && exit 1
@@ -111,11 +121,20 @@ function checkFingerprint() #{{{
 #		* The file name
 function checkSignature() #{{{
 {
-	$GPG --verify $1 $2 >> $LOG 2>&1
-	BUFFER=$?
+	gpg --verify $1 $2 >> $LOG 2>&1
+	local BUFFER=$?
 	printResult $BUFFER
 	rm $1
 	return $BUFFER
 }
 #}}}
 
+#	Take 1 argument:
+#		* The crossdev prefix
+function checkCrossdev() { #{{{
+	ls ${1}* >> $LOG 2>&1
+	local BUFFER=$?
+	printResult $BUFFER
+	[[ $BUFFER -eq  1 ]] && exit 1
+}
+#}}}
