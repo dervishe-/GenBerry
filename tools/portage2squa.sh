@@ -22,10 +22,14 @@ LOCAL_PORTAGE_DIR=portage
 #}}}
 . ./helpers.sh
 
-#clear
 echo -e "\t$HSTAR Checking requirements (1/11): " #{{{
 echo -en "\t\t$HSTAR Is gpg installed ? "
 checkGPG
+echo -en "\t\t$HSTAR Are squashfs tools installed ? "
+which mksquashfs >> $LOG 2>&1
+BUFFER=$?
+printResult $BUFFER
+[[ $BUFFER -eq 1 ]] && exit 1
 echo -en "\t\t$HSTAR Are you root ? "
 checkRoot
 echo -en "\t\t$HSTAR Are you connected ? "
