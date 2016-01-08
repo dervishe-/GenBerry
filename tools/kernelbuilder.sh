@@ -10,12 +10,13 @@
 # This script build the kernel image for the raspberryPi
 #	Parameters list:
 #		modules install path
-#		rPi type 1(A, A+, B, B+) or 2
+#		rPi type:	1 for (A, A+, B, B+ and zero) or 2 for 2A and 2B
 #		server address
 
 
 #{{{ Parameters
 KERNEL_SOURCES=git://github.com/raspberrypi/linux.git
+FBTFT_SOURCES=git://github.com/notro/fbtft.git
 ROOT_PATH="$1"
 TARGET=/usr/bin/armv6j-hardfloat-linux-gnueabi-
 WDIR=./repository_alt
@@ -47,6 +48,15 @@ printResult $?
 
 echo -en "\t$HSTAR Retrieving the kernel source: " #{{{
 git clone --depth 1 $KERNEL_SOURCES >> $LOG 2>&1
+printResult $?
+#}}}
+
+echo -en "\t$HSTAR Retrieving the notro fbtft source: " #{{{
+cd ./linux/drivers/video/fbdev >> $LOG 2>&1
+git clone $FBTFT_SOURCES >> $LOG 2>&1
+echo "source \"drivers/video/fbdev/fbtft/Kconfig\"" >> ./Kconfig
+echo "obj-y += fbtft/" >> ./Makefile
+cd - >> $LOG 2>&1
 printResult $?
 #}}}
 
