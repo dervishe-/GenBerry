@@ -9,11 +9,11 @@
 #
 # This script build an sdcard image
 #	Parameters list:
-#		rPi type 1(A, A+, B, B+) or 2
+#		rPi type 1(A, A+, B, B+, zero) or 2
 #
 
 #{{{ Parameters
-LOCATION=https:///
+LOCATION=https://debrouillonet.org/
 FILE=genBerry.tar.xz
 SIG=${FILE}.gpgsig
 HASH=${FILE}.md5sum
@@ -53,7 +53,7 @@ checkRoot
 echo -en "\t$HSTAR Are you connected ? "
 checkConnectivity
 #}}}
-echo -ne "\n\e[1;31mAll the things seems ok, would you like to install the image on ${DEVICE} (yes|[No]) ?\e[0m "
+echo -ne "\n\e[1;31mAll the things seems ok, would you like to install the image on \e[0m\e[5m${DEVICE}\e[0m\e[1;31m (yes|[No]) ?\e[0m "
 read rep
 [[ $rep =~ [Yy](es)? ]] || exit 1
 echo -e "\nThe log file will be stored here: ${LOG}\n"
@@ -99,14 +99,16 @@ printResult $BUFFER
 #}}}
 
 echo -e "$HSTAR Formating the sdcard (9/13): " #{{{
-echo -en "\t$HSTAR ${DEVICE}p1 in FAT16: "
+BOOT=$(sfdisk -l $DEVICE | grep "^/dev" | cut -d ' ' -f 1 | grep 1)
+ROOT=$(sfdisk -l $DEVICE | grep "^/dev" | cut -d ' ' -f 1 | grep 2)
+echo -en "\t$HSTAR $BOOT in FAT16: "
 
-mkfs.vfat -F 16 ${DEVICE}p1 >> $LOG 2>&1
+mkfs.vfat -F 16 $BOOT >> $LOG 2>&1
 BUFFER=$?
 printResult $BUFFER
 [[ $BUFFER -eq 0 ]] || exit 1
-echo -en "\t$HSTAR ${DEVICE}p2 in ext4: "
-mkfs.ext4 $TAG_EXT4 ${DEVICE}p2 >> $LOG 2>&1
+echo -en "\t$HSTAR $ROOT in ext4: "
+mkfs.ext4 $TAG_EXT4 $ROOT >> $LOG 2>&1
 BUFFER=$?
 printResult $BUFFER
 [[ $BUFFER -eq 0 ]] || exit 1
@@ -115,7 +117,7 @@ printResult $BUFFER
 echo -e "$HSTAR Mounting partitions (10/13): " #{{{
 echo -en "\t$HSTAR root: "
 [[ -d $MOUNT_POINT ]] || mkdir $MOUNT_POINT >> $LOG 2>&1
-mount ${DEVICE}p2 $MOUNT_POINT
+mount $ROOT $MOUNT_POINT
 BUFFER=$?
 printResult $BUFFER
 [[ $BUFFER -eq 0 ]] || exit 1
@@ -126,7 +128,7 @@ if [[ $? -ne 0 ]]; then
 	printResult 1
 	exit 1
 fi
-mount ${DEVICE}p1 ${MOUNT_POINT}/boot
+mount $BOOT ${MOUNT_POINT}/boot
 BUFFER=$?
 printResult $BUFFER
 [[ $BUFFER -eq 0 ]] || exit 1
