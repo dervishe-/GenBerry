@@ -3,15 +3,12 @@ Sort of Gentoo stage 4 for RaspberryPi with several tools.
 
 ## Tools list:
 
-* portage2squa.sh: 
+### portage2squash: 
 
 
-	Build a squash image with a portage tree. The tree is retrieved from gentoo repository,
+	Build a squash image with a portage tree. The tree is retrieved from gentoo repository, verified (hash + signature) and the image is created
 
-
-	verified (hash + signature) and the image is created
-
-* kernelbuilder.sh:
+### kernelbuilder:
 
 
 	Download the kernel sources on Git  
@@ -22,7 +19,7 @@ Sort of Gentoo stage 4 for RaspberryPi with several tools.
 
 	install the boot files, the kernel and the modules  
 
-* imagebuilder.sh:
+### imagebuilder:
 
 
 	Download the stage4,
