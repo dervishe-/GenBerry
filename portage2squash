@@ -1,7 +1,7 @@
 #!/bin/bash
 # vim: foldmarker={{{,}}}
 #
-# portage2squa.sh
+# portage2squash
 # Author: Alexandre Keledjian <dervishe@yahoo.fr>
 # Version: 1.0
 # License: GPLv3
@@ -19,12 +19,51 @@ WDIR=./repository_alt
 TEST_DIR=./mnt
 SQUASH_FILE=portage.squashfs
 LOCAL_PORTAGE_DIR=portage
+CHECK_SIGN=1
+KEEP_FILES=0
 #}}}
-. ./helpers.sh
+#{{{ Library
+function show_help() #{{{
+{
+	echo "
+usage: $0 <options>
+
+Option's list:
+
+	-h : --help			Display this help message
+	-c : --dont-check		Don't check the several files signature
+	-k : --keep-files		Keep all the files retrieved (archives, hash, signature, etc)
+"
+} #}}}
+#}}}
+. ./helpers
+
+#{{{ Parameters analyzis
+while getopts "hckm:-:" option; do
+	case $option in
+		h ) show_help && exit 0 ;;
+		c ) CHECK_SIGN=0 ;;
+		k ) KEEP_FILES=1 ;;
+		- ) case $OPTARG in
+				help ) show_help && exit 0 ;;
+				dont-check ) CHECK_SIGN=0 ;;
+				keep-files ) KEEP_FILES=1 ;;
+				* ) echo "Unknown option: ${OPTARG}"
+					show_help
+					exit -1 ;;
+			esac ;;
+		? ) echo "Unknown option: ${OPTARG}"
+			show_help
+			exit -1 ;;
+	esac
+done
+#}}}
 
 echo -e "\t$HSTAR Checking requirements (1/11): " #{{{
-echo -en "\t\t$HSTAR Is gpg installed ? "
-checkGPG
+if [[ $CHECK_SIGN -ne 0 ]]; then
+	echo -en "\t\t$HSTAR Is gpg installed ? "
+	checkGPG
+fi
 echo -en "\t\t$HSTAR Are squashfs tools installed ? "
 which mksquashfs >> $LOG 2>&1
 BUFFER=$?
@@ -54,19 +93,21 @@ echo -en "\t$HSTAR Checking file's fingerprint (5/11): " #{{{
 checkFingerprint $HASH
 #}}}
 
-echo -en "\t$HSTAR Retrieving the file's signature (6/11): " #{{{
-getFile $LOCATION/$SIG
-#}}}
+if [[ $CHECK_SIGN -ne 0 ]]; then
+	echo -en "\t$HSTAR Retrieving the file's signature (6/11): " #{{{
+	getFile $LOCATION/$SIG
+	#}}}
 
-echo -en "\t$HSTAR Checking file's signature (7/11): " #{{{
-checkSignature $SIG $FILE
-if [[ $? -ne 0 ]]; then
-	echo -e "\t\tSignature's problem: the file don't seems to be legit..."
-	echo -e "\t\tPerhap's you don't have imported the Gentoo public key:"
-	echo -e "\t\thttps://www.gentoo.org/downloads/signatures/"
-	exit 1;
+	echo -en "\t$HSTAR Checking file's signature (7/11): " #{{{
+	checkSignature $SIG $FILE
+	if [[ $? -ne 0 ]]; then
+		echo -e "\t\tSignature's problem: the file don't seems to be legit..."
+		echo -e "\t\tPerhap's you don't have imported the Gentoo public key:"
+		echo -e "\t\thttps://www.gentoo.org/downloads/signatures/"
+		exit 1;
+	fi
+	#}}}
 fi
-#}}}
 
 echo -en "\t$HSTAR Expanding the portage tree (8/11): " #{{{
 tar -xJpf $FILE >> $LOG 2>&1
@@ -110,12 +151,16 @@ if [[ $BUFFER -ne 0 ]]; then
 	echo -e "\t\tUnable to move the squashfs file: '$SQUASH_FILE' from the temporary directory"
 	exit 1
 fi
-rm -Rf $WDIR >> $LOG 2>&1
-BUFFER=$?
-printResult $BUFFER
-if [[ $BUFFER -ne 0 ]]; then
-	echo -e "\t\tUnable to clean and delete the temporary directory"
-	exit 1
+if [[ $KEEP_FILES -ne 1 ]]; then
+	rm -Rf $WDIR >> $LOG 2>&1
+	BUFFER=$?
+	printResult $BUFFER
+	if [[ $BUFFER -ne 0 ]]; then
+		echo -e "\t\tUnable to clean and delete the temporary directory"
+		exit 1
+	fi
+else
+	printResult $BUFFER
 fi
 #}}}
 exit 0

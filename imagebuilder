@@ -1,15 +1,13 @@
 #!/bin/bash
 # vim: foldmarker={{{,}}}
 #
-# imagebuilder.sh
+# imagebuilder
 # Author: Alexandre Keledjian <dervishe@yahoo.fr>
 # Version: 1.0
 # License: GPLv3
 # 
 #
 # This script build an sdcard image
-#	Parameters list:
-#		rPi type 1(A, A+, B, B+, zero) or 2
 #
 
 #{{{ Parameters
@@ -18,31 +16,106 @@ FILE=genBerry.tar.xz
 SIG=${FILE}.gpgsig
 HASH=${FILE}.md5sum
 DEVICE=/dev/mmcblk0
-MOUNT_POINT=./mnt
-WDIR=./repository
-RASP_TYPE="$1"
-echo $RASP_TYPE
+MOUNT_POINT=mnt
+WDIR=repository
+RASP_TYPE=1
+VERBOSE=0
+CHECK_SIGN=1
+KEEP_FILES=0
+NO_DISK=0
+NO_NET=0
+NO_FBTFT=0
+FLAG_FBTFT=""
+FLAG_KEEP_FILES=""
+FLAG_CHECK_SIGN=""
 # Check for a correct raspberry type
-if ! [[ $RASP_TYPE -eq 1 ]] && ! [[ $RASP_TYPE -eq 2 ]]; then
-	echo "Bad RaspBerry type (1|2): $RASP_TYPE"
-	exit 1
-fi
 # Here we assume that each sector's size is 512 bytes
 DISK_SIZE=$(($(sfdisk -s $DEVICE) * 2))
 LAYOUT="2048,65536,c\n67584,,83"
 [[ $DISK_SIZE -lt 8388608 ]] && TAG_EXT4="-T small" || TAG_EXT4=""
 #}}}
-. ./helpers.sh
+#{{{ Library
+function show_help() #{{{
+{
+	echo "
+usage: $0 <options>
 
+Option's list:
+
+	-b <type>			Type of the board: 
+					1/ for raspberryPi (1 A A+ B B+ and zero) and 
+					2/ for raspberryPi (2 A and B)
+					Default type is 1
+	-d <dev>			Set the device used to store the system (/dev/mmcblk0)
+	-m <dir>			Set the mount point for the disk (./mnt)
+	-h : --help			Display this help message
+	-c : --dont-check		Don't check the several files signature
+	-n : --no-disk			You have to prepare the disk yourself (partitionning, formating and mounting) and you MUST use this option
+					in conjonction with -m in order to indicate the mount point. In this case, it is necessary to adjust the /etc/fstab
+					located in the media.
+	-k : --keep-files		Keep all the files retrieved (archives, hash, signature, etc)
+	-w : --without-fbtft		Don't include the Notro fbtft drivers
+	-i : --no-auto-net			Disable network interface startup at boot time (for the raspberry without network interface like zero)
+"
+} #}}}
+#}}}
+. ./helpers
+
+#{{{ Parameters analyzis
+while getopts "hcnikwb:d:m:-:" option; do
+	case $option in
+		h ) show_help && exit 0 ;;
+		c ) CHECK_SIGN=0; FLAG_CHECK_SIGN="--dont-check" ;;
+		n ) NO_DISK=1 ;;
+		i ) NO_NET=1 ;;
+		k ) KEEP_FILES=1; FLAG_KEEP_FILES="--keep-files";;
+		w ) NO_FBTFT=1; FLAG_FBTFT="--without-fbtft";;
+		b ) RASP_TYPE=$OPTARG
+			if ! [[ $RASP_TYPE -eq 1 ]] && ! [[ $RASP_TYPE -eq 2 ]]; then
+				echo "Bad RaspBerry type: $RASP_TYPE"
+				show_help
+				exit 1
+			fi;;
+		m ) MOUNT_POINT=$OPTARG
+			if ! [[ -d $MOUNT_POINT ]]; then
+				echo "$MOUNT_POINT doesn't exist."
+				show_help
+				exit 1
+			fi;;
+		d ) DEVICE=$OPTARG
+			if ! [[ -b $DEVICE ]]; then
+				echo "$DEVICE doesn't exist."
+				show_help
+				exit 1
+			fi;;
+		- ) case $OPTARG in
+				help ) show_help && exit 0 ;;
+				dont-check ) CHECK_SIGN=0; FLAG_CHECK_SIGN="--dont-check" ;;
+				keep-files ) KEEP_FILES=1; FLAG_KEEP_FILES="--keep-files";;
+				no-disk ) NO_DISK=1 ;;
+				no-auto-net ) NO_NET=1 ;;
+				without-fbtft ) NO_FBTFT=1; FLAG_FBTFT="--without-fbtft";;
+				* ) echo "Unknown option: ${OPTARG}"
+					show_help
+					exit -1 ;;
+			esac ;;
+		? ) echo "Unknown option: ${OPTARG}"
+			show_help
+			exit -1 ;;
+	esac
+done
+#}}}
 clear
-echo -e "$HSTAR Checking requirements (1/13): " #{{{
+echo -e "$HSTAR Checking requirements (1/14): " #{{{
 echo -en "\t$HSTAR Is ${DEVICE} exists ? "
 ls $DEVICE >> $LOG 2>&1
 BUFFER=$?
 printResult $BUFFER
 [[ $BUFFER -ne 0 ]] && exit 1
-echo -en "\t$HSTAR Is gpg installed ? "
-checkGPG
+if [[ $CHECK_SIGN -ne 0 ]]; then
+	echo -en "\t$HSTAR Is gpg installed ? "
+	checkGPG
+fi
 echo -en "\t$HSTAR Is partprobe installed ? "
 which partprobe >> $LOG 2>&1
 BUFFER=$?
@@ -58,47 +131,50 @@ read rep
 [[ $rep =~ [Yy](es)? ]] || exit 1
 echo -e "\nThe log file will be stored here: ${LOG}\n"
 
-echo -en "$HSTAR Building working dir (2/13): " #{{{
+echo -en "$HSTAR Building working dir (2/14): " #{{{
 ([[ -d $WDIR ]] || mkdir "$WDIR") && cd "$WDIR" >> $LOG 2>&1
 printResult $?
 #}}}
 
-echo -en "$HSTAR Retrieving the fingerprint (3/13): " #{{{
+echo -en "$HSTAR Retrieving the fingerprint (3/14): " #{{{
 [[ -f $HASH ]] && rm $HASH
 getFile $LOCATION/$HASH
 #}}}
 
-echo -en "$HSTAR Retrieving stage 4 (4/13): " #{{{
+echo -en "$HSTAR Retrieving stage 4 (4/14): " #{{{
 retrieveFile $FILE $HASH $LOCATION
 #}}}
 
-echo -en "$HSTAR Checking the new file's fingerprint (5/13): " #{{{
+echo -en "$HSTAR Checking the new file's fingerprint (5/14): " #{{{
 checkFingerprint $HASH
 #}}}
 
-echo -en "$HSTAR Retrieving the file's signature (6/13): " #{{{
-getFile $LOCATION/$SIG
-#}}}
+if [[ $CHECK_SIGN -ne 0 ]]; then
+	echo -en "$HSTAR Retrieving the file's signature (6/14): " #{{{
+	getFile $LOCATION/$SIG
+	#}}}
 
-echo -en "$HSTAR Checking file's signature (7/13): " #{{{
-checkSignature $SIG $FILE
-if [[ $? -ne 0 ]]; then
-	echo -e "\tSignature's problem: the file don't seems to be legit..."
-	echo -e "\tPerhap's you don't have imported my public key:"
-	echo -e "\thttps://keybase.io/dervishe/key.asc"
-	exit 1;
+	echo -en "$HSTAR Checking file's signature (7/14): " #{{{
+	checkSignature $SIG $FILE
+	if [[ $? -ne 0 ]]; then
+		echo -e "\tSignature's problem: the file don't seems to be legit..."
+		echo -e "\tPerhap's you don't have imported my public key:"
+		echo -e "\thttps://keybase.io/dervishe/key.asc"
+		exit 1;
+	fi
+	#}}}
 fi
-#}}}
 
-echo -en "$HSTAR Partitionning the sdcard (8/13): " #{{{
-echo -e $LAYOUT | sfdisk $DEVICE >> $LOG 2>&1
-partprobe $DEVICE >> $LOG 2>&1
-BUFFER=$?
-printResult $BUFFER
-[[ $BUFFER -eq 0 ]] || exit 1
-#}}}
+if [[ $NO_DISK -eq 0 ]]; then
+	echo -en "$HSTAR Partitionning the sdcard (8/14): " #{{{
+	echo -e $LAYOUT | sfdisk $DEVICE >> $LOG 2>&1
+	partprobe $DEVICE >> $LOG 2>&1
+	BUFFER=$?
+	printResult $BUFFER
+	[[ $BUFFER -eq 0 ]] || exit 1
+	#}}}
 
-echo -e "$HSTAR Formating the sdcard (9/13): " #{{{
+echo -e "$HSTAR Formating the sdcard (9/14): " #{{{
 BOOT=$(sfdisk -l $DEVICE | grep "^/dev" | cut -d ' ' -f 1 | grep 1)
 ROOT=$(sfdisk -l $DEVICE | grep "^/dev" | cut -d ' ' -f 1 | grep 2)
 echo -en "\t$HSTAR $BOOT in FAT16: "
@@ -114,7 +190,7 @@ printResult $BUFFER
 [[ $BUFFER -eq 0 ]] || exit 1
 #}}}
 
-echo -e "$HSTAR Mounting partitions (10/13): " #{{{
+echo -e "$HSTAR Mounting partitions (10/14): " #{{{
 echo -en "\t$HSTAR root: "
 [[ -d $MOUNT_POINT ]] || mkdir $MOUNT_POINT >> $LOG 2>&1
 mount $ROOT $MOUNT_POINT
@@ -133,8 +209,9 @@ BUFFER=$?
 printResult $BUFFER
 [[ $BUFFER -eq 0 ]] || exit 1
 #}}}
+fi
 
-echo -en "$HSTAR Expanding the image on sdcard (11/13): " #{{{
+echo -en "$HSTAR Expanding the image on sdcard (11/14): " #{{{
 tar -xJpf $FILE -C $MOUNT_POINT >> $LOG 2>&1
 BUFFER=$?
 printResult $BUFFER
@@ -145,22 +222,24 @@ if [[ $BUFFER -ne 0 ]]; then
 	umount ${MOUNT_POINT}/{boot,} >> $LOG 2>&1
 	exit 1;
 fi
+# Cleaning the net.eth0 from runlevel default
+[[ $NO_NET -eq 1 ]] && rm ${MOUNT_POINT}/etc/runlevels/default/net.eth0 >> $LOG 2>&1
 #}}}
 
-echo -e "$HSTAR Installing new kernel (12/13): " #{{{
+echo -e "$HSTAR Installing new kernel (12/14): " #{{{
 cd .. >> $LOG 2>&1
-./kernelbuilder.sh ../../${WDIR}/$MOUNT_POINT $RASP_TYPE $LOCATION
+./kernelbuilder -m $(pwd)/${WDIR}/$MOUNT_POINT -b $RASP_TYPE $FLAG_FBTFT $FLAG_KEEP_FILES
 cd - >> $LOG 2>&1
 #}}}
 
-echo -e "$HSTAR Creating portage tree on squashfs (13/13): " #{{{
+echo -e "$HSTAR Creating portage tree on squashfs (13/14): " #{{{
 cd .. > /dev/null 2>&1
-${WDIR}/${MOUNT_POINT}/root/portage/portage2squa.sh
+./portage2squash $FLAG_KEEP_FILES $FLAG_CHECK_SIGN
 mv ./portage.squashfs ${WDIR}/${MOUNT_POINT}/root/portage/ > /dev/null 2>&1
 cd - > /dev/null 2>&1
 #}}}
 
-echo -e "$HSTAR Cleaning all the stuffs (14/13): " #{{{
+echo -e "$HSTAR Cleaning all the stuffs (14/14): " #{{{
 echo -en "\t$HSTAR Syncing sdcard: "
 sync && printResult 0
 echo -en "\t$HSTAR Unmounting directory: "
@@ -169,13 +248,15 @@ BUFFER=$?
 printResult $BUFFER
 [[ $BUFFER -ne 0 ]] && exit 1
 cd .. >> $LOG 2>&1
-echo -en "\t$HSTAR Deleting stuffs: "
-rm -Rf $WDIR >> $LOG 2>&1
-BUFFER=$?
-printResult $BUFFER
-if [[ $BUFFER -ne 0 ]]; then
-	echo -e "\tUnable to clean and delete the temporary directory"
-	exit 1
+if [[ $KEEP_FILES -ne 1 ]]; then
+	echo -en "\t$HSTAR Deleting stuffs: "
+	rm -Rf $WDIR >> $LOG 2>&1
+	BUFFER=$?
+	printResult $BUFFER
+	if [[ $BUFFER -ne 0 ]]; then
+		echo -e "\tUnable to clean and delete the temporary directory"
+		exit 1
+	fi
 fi
 #}}}
 exit 0

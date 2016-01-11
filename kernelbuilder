@@ -1,36 +1,83 @@
 #!/bin/bash
 # vim: foldmarker={{{,}}}
 #
-# kernelbuilder.sh
+# kernelbuilder
 # Author: Alexandre Keledjian <dervishe@yahoo.fr>
 # Version: 1.0
 # License: GPLv3
 #
 #
 # This script build the kernel image for the raspberryPi
-#	Parameters list:
-#		modules install path
-#		rPi type:	1 for (A, A+, B, B+ and zero) or 2 for 2A and 2B
-#		server address
-
+#
 
 #{{{ Parameters
 KERNEL_SOURCES=git://github.com/raspberrypi/linux.git
 FBTFT_SOURCES=git://github.com/notro/fbtft.git
-ROOT_PATH="$1"
+ROOT_PATH=""
 TARGET=/usr/bin/armv6j-hardfloat-linux-gnueabi-
 WDIR=./repository_alt
-LOCATION="$3"
-RASP_TYPE="$2"
-# Check for a correct raspberry type
-if ! [[ $RASP_TYPE  -eq 1 ]] && ! [[ $RASP_TYPE -eq 2 ]]; then
-	echo "Bad RaspBerry type (1|2): $RASP_TYPE"
+RASP_TYPE=1
+KEEP_FILES=0
+NO_FBTFT=0
+#}}}
+#{{{ Library
+function show_help() #{{{
+{
+	echo "
+usage: $0 -b board_type -m mount_point <options>
+
+Option's list:
+
+	-b <type>			Type of the board: [Mandatory]
+					1/ for raspberryPi (1 A A+ B B+ and zero) and 
+					2/ for raspberryPi (2 A and B)
+					Default type is 1
+	-m <dir>			Set the mount point for the disk (./mnt) [Mandatory]
+	-h : --help			Display this help message
+	-k : --keep-files		Keep all the files retrieved (archives, hash, signature, etc)
+	-w : --without-fbtft		Don't include the Notro fbtft drivers
+"
+} #}}}
+#}}}
+. ./helpers
+
+#{{{ Parameters analyzis
+while getopts "hkwb:m:-:" option; do
+	case $option in
+		h ) show_help && exit 0 ;;
+		k ) KEEP_FILES=1;;
+		w ) NO_FBTFT=1;;
+		b ) RASP_TYPE=$OPTARG
+			if ! [[ $RASP_TYPE -eq 1 ]] && ! [[ $RASP_TYPE -eq 2 ]]; then
+				echo "Bad RaspBerry type: $RASP_TYPE"
+				show_help
+				exit 1
+			fi;;
+		m ) ROOT_PATH=$OPTARG
+			if ! [[ -d $ROOT_PATH ]]; then
+				echo "$ROOT_PATH doesn't exist."
+				exit 1
+			fi;;
+		- ) case $OPTARG in
+				help ) show_help && exit 0 ;;
+				keep-files ) KEEP_FILES=1;;
+				without-fbtft ) NO_FBTFT=1;;
+				* ) echo "Unknown option: ${OPTARG}"
+					show_help
+					exit -1 ;;
+			esac ;;
+		? ) echo "Unknown option: ${OPTARG}"
+			show_help
+			exit -1 ;;
+	esac
+done
+#}}}
+if [[ $ROOT_PATH = "" ]]; then
+	echo "You didn't provide the mount point for the disk"
+	show_help
 	exit 1
 fi
-#}}}
-. ./helpers.sh
-
-echo -e "\t$HSTAR Checking requirements: " #{{{
+echo -e "\t$HSTAR Checking requirements (1/9): " #{{{
 echo -en "\t\t$HSTAR Are you root ? "
 checkRoot
 echo -en "\t\t$HSTAR Are you connected ? "
@@ -41,26 +88,28 @@ echo -en "\t\t$HSTAR Kernel building tools installed ? "
 checkKBT
 #}}}
 
-echo -en "\t$HSTAR Building working dir: " #{{{
+echo -en "\t$HSTAR Building working dir (2/9): " #{{{
 ([[ -d $WDIR ]] || mkdir "$WDIR") && cd "$WDIR" >> $LOG 2>&1
 printResult $?
 #}}}
 
-echo -en "\t$HSTAR Retrieving the kernel source: " #{{{
-git clone --depth 1 $KERNEL_SOURCES >> $LOG 2>&1
+echo -en "\t$HSTAR Retrieving the kernel source (3/9): " #{{{
+[[ -d ./linux ]] || git clone --depth 1 $KERNEL_SOURCES >> $LOG 2>&1
 printResult $?
 #}}}
 
-echo -en "\t$HSTAR Retrieving the notro fbtft source: " #{{{
-cd ./linux/drivers/video/fbdev >> $LOG 2>&1
-git clone $FBTFT_SOURCES >> $LOG 2>&1
-echo "source \"drivers/video/fbdev/fbtft/Kconfig\"" >> ./Kconfig
-echo "obj-y += fbtft/" >> ./Makefile
-cd - >> $LOG 2>&1
-printResult $?
-#}}}
+if [[ $NO_FBTFT -eq 0 ]]; then
+	echo -en "\t$HSTAR Retrieving the notro fbtft source (4/9): " #{{{
+	cd ./linux/drivers/video/fbdev >> $LOG 2>&1
+	git clone $FBTFT_SOURCES >> $LOG 2>&1
+	echo "source \"drivers/video/fbdev/fbtft/Kconfig\"" >> ./Kconfig
+	echo "obj-y += fbtft/" >> ./Makefile
+	cd - >> $LOG 2>&1
+	printResult $?
+	#}}}
+fi
 
-echo -e "\t$HSTAR Compiling the kernel (You can take a coffee now): " #{{{
+echo -e "\t$HSTAR Compiling the kernel (You can take a coffee now) (5/9): " #{{{
 cd ./linux >> $LOG 2>&1
 
 echo -en "\t\t$HSTAR Configure BCM chip: "
@@ -81,21 +130,21 @@ make ARCH=arm CROSS_COMPILE=$TARGET -j$(( $NB_CORE + 1 )) -l$NB_CORE >> $LOG 2>&
 printResult $?
 #}}}
 
-echo -en "\t$HSTAR Installing the modules: " #{{{
+echo -en "\t$HSTAR Installing the modules (6/9): " #{{{
 make ARCH=arm CROSS_COMPILE=$TARGET modules_install INSTALL_MOD_PATH=$ROOT_PATH >> $LOG 2>&1
 BUFFER=$?
 printResult $BUFFER
 [[ $BUFFER -eq 1 ]] && exit 1
 # Adjusting the symbolic link
 KERN_VERSION=$(cat .config | grep Linux | cut -d ' ' -f 3)
-cd ${ROOT_PATH}/lib/modules/${KERN_VERSION}*
-rm ./build ./source
-ln -s /usr/src/linux ./build
-ln -s /usr/src/linux ./source
-cd -
+cd ${ROOT_PATH}/lib/modules/${KERN_VERSION}* >> $LOG 2>&1
+rm ./build ./source >> $LOG 2>&1
+ln -s /usr/src/linux ./build >> $LOG 2>&1
+ln -s /usr/src/linux ./source >> $LOG 2>&1
+cd - >> $LOG 2>&1
 #}}}
 
-echo -en "\t$HSTAR Installing the kernel: " #{{{
+echo -en "\t$HSTAR Installing the kernel (7/9): " #{{{
 if [[ $RASP_TYPE -eq 1 ]]; then
 	imagetool-uncompressed.py arch/arm/boot/Image ${ROOT_PATH}/boot/kernel.img >> $LOG 2>&1
 elif [[ $RASP_TYPE -eq 2 ]]; then
@@ -107,20 +156,23 @@ cp arch/arm/boot/dts/overlays/README ${ROOT_PATH}/boot/overlays/ >> $LOG 2>&1
 printResult $?
 #}}}
 
-echo -en "\t$HSTAR Installing the kernel config file: " #{{{
+echo -en "\t$HSTAR Installing the kernel config file (8/9): " #{{{
 cp .config ${ROOT_PATH}/usr/src/linux/ >> $LOG 2>&1
 printResult $?
 #}}}
 
-echo -e "\t$HSTAR Cleaning all the stuffs: " #{{{
-echo -en "\t\t$HSTAR Deleting stuffs: "
+echo -e "\t$HSTAR Cleaning all the stuffs (9/9): " #{{{
 cd ../../
-rm -Rf $WDIR >> $LOG 2>&1
-BUFFER=$?
-printResult $BUFFER
-if [[ $BUFFER -ne 0 ]]; then
-	echo -e "\t\t\tUnable to clean and delete the temporary directory"
-	exit 1
+if [[ $KEEP_FILES -ne 1 ]]; then
+	echo -en "\t\t$HSTAR Deleting stuffs: "
+	rm -Rf $WDIR >> $LOG 2>&1
+	BUFFER=$?
+	printResult $BUFFER
+	if [[ $BUFFER -ne 0 ]]; then
+		echo -e "\t\t\tUnable to clean and delete the temporary directory"
+		exit 1
+	fi
 fi
 cd .. >> $LOG 2>&1
 #}}}
+exit 0
