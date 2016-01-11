@@ -16,6 +16,7 @@ FBTFT_SOURCES=git://github.com/notro/fbtft.git
 ROOT_PATH=""
 TARGET=/usr/bin/armv6j-hardfloat-linux-gnueabi-
 WDIR=./repository_alt
+CONFIG_FILE=""
 RASP_TYPE=1
 KEEP_FILES=0
 NO_FBTFT=0
@@ -33,6 +34,7 @@ Option's list:
 					2/ for raspberryPi (2 A and B)
 					Default type is 1
 	-m <dir>			Set the mount point for the disk (./mnt) [Mandatory]
+	-c <file>			Use your own .config file to compile the kernel. Here, you MUST use absolute path to the file
 	-h : --help			Display this help message
 	-k : --keep-files		Keep all the files retrieved (archives, hash, signature, etc)
 	-w : --without-fbtft		Don't include the Notro fbtft drivers
@@ -42,7 +44,7 @@ Option's list:
 . ./helpers
 
 #{{{ Parameters analyzis
-while getopts "hkwb:m:-:" option; do
+while getopts "hkwb:m:c:-:" option; do
 	case $option in
 		h ) show_help && exit 0 ;;
 		k ) KEEP_FILES=1;;
@@ -56,6 +58,13 @@ while getopts "hkwb:m:-:" option; do
 		m ) ROOT_PATH=$OPTARG
 			if ! [[ -d $ROOT_PATH ]]; then
 				echo "$ROOT_PATH doesn't exist."
+				show_help
+				exit 1
+			fi;;
+		c ) CONFIG_FILE=$OPTARG
+			if ! [[ -f $CONFIG_FILE ]]; then
+				echo "$CONFIG_FILE doesn't exist."
+				show_help
 				exit 1
 			fi;;
 		- ) case $OPTARG in
@@ -101,24 +110,33 @@ printResult $?
 if [[ $NO_FBTFT -eq 0 ]]; then
 	echo -en "\t$HSTAR Retrieving the notro fbtft source (4/9): " #{{{
 	cd ./linux/drivers/video/fbdev >> $LOG 2>&1
-	git clone $FBTFT_SOURCES >> $LOG 2>&1
-	echo "source \"drivers/video/fbdev/fbtft/Kconfig\"" >> ./Kconfig
-	echo "obj-y += fbtft/" >> ./Makefile
+	if ! [[ -d fbtft ]]; then
+		git clone $FBTFT_SOURCES >> $LOG 2>&1
+		echo "source \"drivers/video/fbdev/fbtft/Kconfig\"" >> ./Kconfig
+		echo "obj-y += fbtft/" >> ./Makefile
+		printResult $?
+	else
+		printResult 0
+	fi
 	cd - >> $LOG 2>&1
-	printResult $?
 	#}}}
 fi
 
 echo -e "\t$HSTAR Compiling the kernel (You can take a coffee now) (5/9): " #{{{
 cd ./linux >> $LOG 2>&1
-
-echo -en "\t\t$HSTAR Configure BCM chip: "
-if [[ $RASP_TYPE -eq 1 ]]; then
-	make ARCH=arm bcmrpi_defconfig >> $LOG 2>&1
-elif [[ $RASP_TYPE -eq 2 ]]; then
-	make ARCH=arm bcm2709_defconfig >> $LOG 2>&1
+if [[ $CONFIG_FILE = "" ]]; then
+	echo -en "\t\t$HSTAR Configure BCM chip: "
+	if [[ $RASP_TYPE -eq 1 ]]; then
+		make ARCH=arm bcmrpi_defconfig >> $LOG 2>&1
+	elif [[ $RASP_TYPE -eq 2 ]]; then
+		make ARCH=arm bcm2709_defconfig >> $LOG 2>&1
+	fi
+	printResult $?
+else
+	echo -en "\t\t$HSTAR Using your config file: "
+	cp -v $CONFIG_FILE . >> $LOG 2>&1
+	printResult $?
 fi
-printResult $?
 
 echo -en "\t\t$HSTAR Configuring the kernel: "
 make ARCH=arm CROSS_COMPILE=$TARGET oldconfig >> $LOG 2>&1

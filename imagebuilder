@@ -18,6 +18,7 @@ HASH=${FILE}.md5sum
 DEVICE=/dev/mmcblk0
 MOUNT_POINT=mnt
 WDIR=repository
+HOSTNAME="genBerry"
 RASP_TYPE=1
 VERBOSE=0
 CHECK_SIGN=1
@@ -28,6 +29,7 @@ NO_FBTFT=0
 FLAG_FBTFT=""
 FLAG_KEEP_FILES=""
 FLAG_CHECK_SIGN=""
+FLAG_USE_CONFIG=""
 # Check for a correct raspberry type
 # Here we assume that each sector's size is 512 bytes
 DISK_SIZE=$(($(sfdisk -s $DEVICE) * 2))
@@ -44,12 +46,14 @@ Option's list:
 
 	-b <type>			Type of the board: 
 					1/ for raspberryPi (1 A A+ B B+ and zero) and 
-					2/ for raspberryPi (2 A and B)
+					2/ for raspberryPi (2 B)
 					Default type is 1
 	-d <dev>			Set the device used to store the system (/dev/mmcblk0)
 	-m <dir>			Set the mount point for the disk (./mnt)
+	-H hostname			Set the hostname
 	-h : --help			Display this help message
 	-c : --dont-check		Don't check the several files signature
+	-C <file>			Use your own .config file to compile the kernel. Here, you MUST use absolute path to the file
 	-n : --no-disk			You have to prepare the disk yourself (partitionning, formating and mounting) and you MUST use this option
 					in conjonction with -m in order to indicate the mount point. In this case, it is necessary to adjust the /etc/fstab
 					located in the media.
@@ -62,7 +66,7 @@ Option's list:
 . ./helpers
 
 #{{{ Parameters analyzis
-while getopts "hcnikwb:d:m:-:" option; do
+while getopts "hcnikwb:d:m:C:H:-:" option; do
 	case $option in
 		h ) show_help && exit 0 ;;
 		c ) CHECK_SIGN=0; FLAG_CHECK_SIGN="--dont-check" ;;
@@ -88,6 +92,15 @@ while getopts "hcnikwb:d:m:-:" option; do
 				show_help
 				exit 1
 			fi;;
+		C ) CONFIG_FILE=$OPTARG
+			if ! [[ -f $CONFIG_FILE ]]; then
+				echo "$CONFIG_FILE doesn't exist."
+				show_help
+				exit 1
+			fi
+			FLAG_USE_CONFIG="-c $CONFIG_FILE"
+			;;
+		H ) HOSTNAME=$OPTARG ;;
 		- ) case $OPTARG in
 				help ) show_help && exit 0 ;;
 				dont-check ) CHECK_SIGN=0; FLAG_CHECK_SIGN="--dont-check" ;;
@@ -106,7 +119,7 @@ while getopts "hcnikwb:d:m:-:" option; do
 done
 #}}}
 clear
-echo -e "$HSTAR Checking requirements (1/14): " #{{{
+echo -e "$HSTAR Checking requirements (1/15): " #{{{
 echo -en "\t$HSTAR Is ${DEVICE} exists ? "
 ls $DEVICE >> $LOG 2>&1
 BUFFER=$?
@@ -115,6 +128,17 @@ printResult $BUFFER
 if [[ $CHECK_SIGN -ne 0 ]]; then
 	echo -en "\t$HSTAR Is gpg installed ? "
 	checkGPG
+	echo -en "\t$HSTAR Are the necessary public keys available ? "
+	NB_PK=$(gpg -k | grep "Gentoo\|dervishe@yahoo.fr" | wc -l)
+	if [[ $NB_PK -ne 4 ]]; then
+		printResult 1
+		echo -e "\tYou choose to verify the signature of the several downloaded files but the signing keys are missing."
+		echo -e "\tYou have to import them before from here:"
+		echo -e "\t\thttps://keybase.io/dervishe/key.asc and"
+		echo -e "\t\thttps://www.gentoo.org/downloads/signatures/"
+		exit 1
+	fi
+	printResult 0
 fi
 echo -en "\t$HSTAR Is partprobe installed ? "
 which partprobe >> $LOG 2>&1
@@ -131,30 +155,30 @@ read rep
 [[ $rep =~ [Yy](es)? ]] || exit 1
 echo -e "\nThe log file will be stored here: ${LOG}\n"
 
-echo -en "$HSTAR Building working dir (2/14): " #{{{
+echo -en "$HSTAR Building working dir (2/15): " #{{{
 ([[ -d $WDIR ]] || mkdir "$WDIR") && cd "$WDIR" >> $LOG 2>&1
 printResult $?
 #}}}
 
-echo -en "$HSTAR Retrieving the fingerprint (3/14): " #{{{
+echo -en "$HSTAR Retrieving the fingerprint (3/15): " #{{{
 [[ -f $HASH ]] && rm $HASH
 getFile $LOCATION/$HASH
 #}}}
 
-echo -en "$HSTAR Retrieving stage 4 (4/14): " #{{{
+echo -en "$HSTAR Retrieving stage 4 (4/15): " #{{{
 retrieveFile $FILE $HASH $LOCATION
 #}}}
 
-echo -en "$HSTAR Checking the new file's fingerprint (5/14): " #{{{
+echo -en "$HSTAR Checking the new file's fingerprint (5/15): " #{{{
 checkFingerprint $HASH
 #}}}
 
 if [[ $CHECK_SIGN -ne 0 ]]; then
-	echo -en "$HSTAR Retrieving the file's signature (6/14): " #{{{
+	echo -en "$HSTAR Retrieving the file's signature (6/15): " #{{{
 	getFile $LOCATION/$SIG
 	#}}}
 
-	echo -en "$HSTAR Checking file's signature (7/14): " #{{{
+	echo -en "$HSTAR Checking file's signature (7/15): " #{{{
 	checkSignature $SIG $FILE
 	if [[ $? -ne 0 ]]; then
 		echo -e "\tSignature's problem: the file don't seems to be legit..."
@@ -166,15 +190,16 @@ if [[ $CHECK_SIGN -ne 0 ]]; then
 fi
 
 if [[ $NO_DISK -eq 0 ]]; then
-	echo -en "$HSTAR Partitionning the sdcard (8/14): " #{{{
+	echo -en "$HSTAR Partitionning the sdcard (8/15): " #{{{
 	echo -e $LAYOUT | sfdisk $DEVICE >> $LOG 2>&1
 	partprobe $DEVICE >> $LOG 2>&1
 	BUFFER=$?
+	sleep 2
 	printResult $BUFFER
 	[[ $BUFFER -eq 0 ]] || exit 1
 	#}}}
 
-echo -e "$HSTAR Formating the sdcard (9/14): " #{{{
+echo -e "$HSTAR Formating the sdcard (9/15): " #{{{
 BOOT=$(sfdisk -l $DEVICE | grep "^/dev" | cut -d ' ' -f 1 | grep 1)
 ROOT=$(sfdisk -l $DEVICE | grep "^/dev" | cut -d ' ' -f 1 | grep 2)
 echo -en "\t$HSTAR $BOOT in FAT16: "
@@ -190,7 +215,7 @@ printResult $BUFFER
 [[ $BUFFER -eq 0 ]] || exit 1
 #}}}
 
-echo -e "$HSTAR Mounting partitions (10/14): " #{{{
+echo -e "$HSTAR Mounting partitions (10/15): " #{{{
 echo -en "\t$HSTAR root: "
 [[ -d $MOUNT_POINT ]] || mkdir $MOUNT_POINT >> $LOG 2>&1
 mount $ROOT $MOUNT_POINT
@@ -211,7 +236,7 @@ printResult $BUFFER
 #}}}
 fi
 
-echo -en "$HSTAR Expanding the image on sdcard (11/14): " #{{{
+echo -en "$HSTAR Expanding the image on sdcard (11/15): " #{{{
 tar -xJpf $FILE -C $MOUNT_POINT >> $LOG 2>&1
 BUFFER=$?
 printResult $BUFFER
@@ -222,24 +247,37 @@ if [[ $BUFFER -ne 0 ]]; then
 	umount ${MOUNT_POINT}/{boot,} >> $LOG 2>&1
 	exit 1;
 fi
-# Cleaning the net.eth0 from runlevel default
-[[ $NO_NET -eq 1 ]] && rm ${MOUNT_POINT}/etc/runlevels/default/net.eth0 >> $LOG 2>&1
 #}}}
 
-echo -e "$HSTAR Installing new kernel (12/14): " #{{{
+echo -e "$HSTAR Additional tunning (12/15): " #{{{
+# Cleaning the net.eth0 and iptables from runlevel default
+if [[ $NO_NET -eq 1 ]]; then
+	echo -en "\t$HSTAR Disabling network at boot: ";
+	rm ${MOUNT_POINT}/etc/runlevels/default/{net.eth0,iptables,ntp-client,netmount,distccd} >> $LOG 2>&1
+	printResult $?
+fi
+echo -en "\t$HSTAR Copying the tools: ";
+cp -v ../{helpers,{image,kernel}builder,portage2squash} ${MOUNT_POINT}/root/tools/ >> $LOG 2>&1
+printResult $?
+echo -en "\t$HSTAR Fixing the hostname to ${HOSTNAME}: ";
+echo "hostname=\"\"" > ${MOUNT_POINT}/etc/conf.d/hostname
+printResult $?
+#}}}
+
+echo -e "$HSTAR Installing new kernel (13/15): " #{{{
 cd .. >> $LOG 2>&1
-./kernelbuilder -m $(pwd)/${WDIR}/$MOUNT_POINT -b $RASP_TYPE $FLAG_FBTFT $FLAG_KEEP_FILES
+./kernelbuilder -m $(pwd)/${WDIR}/$MOUNT_POINT -b $RASP_TYPE $FLAG_FBTFT $FLAG_KEEP_FILES $FLAG_USE_CONFIG
 cd - >> $LOG 2>&1
 #}}}
 
-echo -e "$HSTAR Creating portage tree on squashfs (13/14): " #{{{
+echo -e "$HSTAR Creating portage tree on squashfs (14/15): " #{{{
 cd .. > /dev/null 2>&1
 ./portage2squash $FLAG_KEEP_FILES $FLAG_CHECK_SIGN
 mv ./portage.squashfs ${WDIR}/${MOUNT_POINT}/root/portage/ > /dev/null 2>&1
 cd - > /dev/null 2>&1
 #}}}
 
-echo -e "$HSTAR Cleaning all the stuffs (14/14): " #{{{
+echo -e "$HSTAR Cleaning all the stuffs (15/15): " #{{{
 echo -en "\t$HSTAR Syncing sdcard: "
 sync && printResult 0
 echo -en "\t$HSTAR Unmounting directory: "
