@@ -260,7 +260,7 @@ echo -en "\t$HSTAR Copying the tools: ";
 cp -v ../{helpers,{image,kernel}builder,portage2squash} ${MOUNT_POINT}/root/tools/ >> $LOG 2>&1
 printResult $?
 echo -en "\t$HSTAR Fixing the hostname to ${HOSTNAME}: ";
-echo "hostname=\"\"" > ${MOUNT_POINT}/etc/conf.d/hostname
+echo "hostname=\"$HOSTNAME\"" > ${MOUNT_POINT}/etc/conf.d/hostname
 printResult $?
 #}}}
 
