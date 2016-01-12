@@ -175,7 +175,7 @@ printResult $?
 #}}}
 
 echo -en "\t$HSTAR Installing the kernel config file (8/9): " #{{{
-cp .config ${ROOT_PATH}/usr/src/linux/ >> $LOG 2>&1
+cp .config Makefile ${ROOT_PATH}/usr/src/linux/ >> $LOG 2>&1
 printResult $?
 #}}}
 
