@@ -43,7 +43,7 @@ I you want the script to check the signature of the several files you will need 
 * download the tools: git clone https://github.com/dervishe-/genBerry.git
 * make them executable: cd genBerry && chmod +x ./
 * execute: imagebuilder <options>
-'''bash
+```bash
 Option's list:
 
 	-b <type>			Type of the board: 
@@ -62,20 +62,15 @@ Option's list:
 	-k : --keep-files		Keep all the files retrieved (archives, hash, signature, etc)
 	-w : --without-fbtft		Don't include the Notro fbtft drivers
 	-i : --no-auto-net			Disable network interface startup at boot time (for the raspberry without network interface like zero)
-'''
+```
 
 
 if all goes, just unplug the sdcard and put it in your raspberry Pi.
 
-* The temporary password for root is: toor  (Don't forget to update it...)
+* The temporary password for root is: toor  (**Don't forget to update it...**)
 
-For more information, consult the help: imagebuilder --help
-
+For more information, consult the help: `imagebuilder --help`
 
 Distcc is installed, you have to configure it. 
 
-Then you can make a:
-
-	emerge -uD @world 
-
-in order to update (if needed) the system
+Once logged in your rPi, then you can make a: `emerge -uD @world` in order to update (if needed) the system.
