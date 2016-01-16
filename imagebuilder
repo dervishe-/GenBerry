@@ -12,7 +12,7 @@
 
 #{{{ Parameters
 LOCATION=https://debrouillonet.org/
-FILE=genBerry_v6.tar.xz
+FILE=genBerry.tar.xz
 FILEv7=genBerry_v7.tar.xz
 SIG=${FILE}.gpgsig
 HASH=${FILE}.md5sum
