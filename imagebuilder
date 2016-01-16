@@ -259,10 +259,14 @@ fi
 #}}}
 
 echo -e "$HSTAR Additional tunning (12/15): " #{{{
-# Cleaning the net.eth0 and iptables from runlevel default
 if [[ $NO_NET -eq 1 ]]; then
 	echo -en "\t$HSTAR Disabling network at boot: ";
 	rm ${MOUNT_POINT}/etc/runlevels/default/{net.eth0,iptables,ntp-client,netmount,distccd} >> $LOG 2>&1
+	printResult $?
+fi
+if [[ $RASP_TYPE -eq 1 ]]; then
+	echo -en "\t$HSTAR Adding binary repository from NeddySeagoon: ";
+	echo "PORTAGE_BINHOST=\"http://grytpype-thynne.org/~roy/BINHOSTS/\"" >> ${MOUNT_POINT}/etc/portage/make.conf >> $LOG 2>&1
 	printResult $?
 fi
 echo -en "\t$HSTAR Copying the tools: ";
