@@ -21,6 +21,7 @@ SQUASH_FILE=portage.squashfs
 LOCAL_PORTAGE_DIR=portage
 CHECK_SIGN=1
 KEEP_FILES=0
+VERIFY=1
 #}}}
 #{{{ Library
 function show_help() #{{{
@@ -33,21 +34,24 @@ Option's list:
 	-h : --help			Display this help message
 	-c : --dont-check		Don't check the several files signature
 	-k : --keep-files		Keep all the files retrieved (archives, hash, signature, etc)
+	-V : --dont-verify		Don't verify the squashfs image after its building
 "
 } #}}}
 #}}}
 . ./helpers
 
 #{{{ Parameters analyzis
-while getopts "hckm:-:" option; do
+while getopts "hckV-:" option; do
 	case $option in
 		h ) show_help && exit 0 ;;
 		c ) CHECK_SIGN=0 ;;
 		k ) KEEP_FILES=1 ;;
+		V ) VERIFY=0 ;;
 		- ) case $OPTARG in
 				help ) show_help && exit 0 ;;
 				dont-check ) CHECK_SIGN=0 ;;
 				keep-files ) KEEP_FILES=1 ;;
+				dont-verify ) CHECK_SIGN=0 ;;
 				* ) echo "Unknown option: ${OPTARG}"
 					show_help
 					exit -1 ;;
@@ -139,19 +143,21 @@ printResult $BUFFER
 [[ $BUFFER -ne 0 ]] && exit 1
 #}}}
 
-echo -en "\t$HSTAR Testing the new image (10/11): " #{{{
-[[ -d $TEST_DIR ]] || mkdir $TEST_DIR >> $LOG 2>&1
-mount -o loop -t squashfs $SQUASH_FILE $TEST_DIR >> $LOG 2>&1
-BUFFER=$?
-printResult $BUFFER
-if [[ $BUFFER -ne 0 ]]; then
-	echo -e "\t\tUnable to mount the new squash image."
-	echo -e "\t\tCheck your kernel if it can handle them"
-	echo -e "\t\tOr if you have the authorization to mount squashfs volumes."
-	exit 1
-fi
-umount $TEST_DIR
+if [[ $VERIFY -eq 1 ]]; then
+	echo -en "\t$HSTAR Testing the new image (10/11): " #{{{
+	[[ -d $TEST_DIR ]] || mkdir $TEST_DIR >> $LOG 2>&1
+	mount -o loop -t squashfs $SQUASH_FILE $TEST_DIR >> $LOG 2>&1
+	BUFFER=$?
+	printResult $BUFFER
+	if [[ $BUFFER -ne 0 ]]; then
+		echo -e "\t\tUnable to mount the new squash image."
+		echo -e "\t\tCheck your kernel if it can handle them"
+		echo -e "\t\tOr if you have the authorization to mount squashfs volumes."
+		exit 1
+	fi
+	umount $TEST_DIR
 #}}}
+fi
 
 echo -en "\t$HSTAR Cleaning all the stuffs (11/11): " #{{{
 cd .. >> $LOG 2>&1
