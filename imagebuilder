@@ -286,7 +286,7 @@ cd - >> $LOG 2>&1
 echo -e "$HSTAR Creating portage tree on squashfs (14/15): " #{{{
 cd .. > /dev/null 2>&1
 ./portage2squash $FLAG_KEEP_FILES $FLAG_CHECK_SIGN
-mv ./portage.squashfs ${WDIR}/${MOUNT_POINT}/root/portage/ > /dev/null 2>&1
+mv ./portage.squashfs ${WDIR}/${MOUNT_POINT}/root/tools/ > /dev/null 2>&1
 cd - > /dev/null 2>&1
 #}}}
 
