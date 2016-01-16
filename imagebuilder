@@ -12,7 +12,8 @@
 
 #{{{ Parameters
 LOCATION=https://debrouillonet.org/
-FILE=genBerry.tar.xz
+FILE=genBerry_v6.tar.xz
+FILEv7=genBerry_v7.tar.xz
 SIG=${FILE}.gpgsig
 HASH=${FILE}.md5sum
 DEVICE=/dev/mmcblk0
@@ -75,11 +76,17 @@ while getopts "hcnikwb:d:m:C:H:-:" option; do
 		k ) KEEP_FILES=1; FLAG_KEEP_FILES="--keep-files";;
 		w ) NO_FBTFT=1; FLAG_FBTFT="--without-fbtft";;
 		b ) RASP_TYPE=$OPTARG
-			if ! [[ $RASP_TYPE -eq 1 ]] && ! [[ $RASP_TYPE -eq 2 ]]; then
+			if [[ $RASP_TYPE -ne 1 ]] && [[ $RASP_TYPE -ne 2 ]]; then
 				echo "Bad RaspBerry type: $RASP_TYPE"
 				show_help
 				exit 1
-			fi;;
+			fi
+			if [[ $RASP_TYPE -eq 2 ]]; then
+				FILE=$FILEv7
+				SIG=${FILE}.gpgsig
+				HASH=${FILE}.md5sum
+			fi
+			;;
 		m ) MOUNT_POINT=$OPTARG
 			if ! [[ -d $MOUNT_POINT ]]; then
 				echo "$MOUNT_POINT doesn't exist."
@@ -140,11 +147,13 @@ if [[ $CHECK_SIGN -ne 0 ]]; then
 	fi
 	printResult 0
 fi
-echo -en "\t$HSTAR Is partprobe installed ? "
-which partprobe >> $LOG 2>&1
-BUFFER=$?
-printResult $BUFFER
-[[ $BUFFER -eq 1 ]] && exit 1
+if [[ $NO_DISK -eq 0 ]]; then
+	echo -en "\t$HSTAR Is partprobe installed ? "
+	which partprobe >> $LOG 2>&1
+	BUFFER=$?
+	printResult $BUFFER
+	[[ $BUFFER -eq 1 ]] && exit 1
+fi
 echo -en "\t$HSTAR Are you root ? "
 checkRoot
 echo -en "\t$HSTAR Are you connected ? "

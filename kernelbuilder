@@ -15,6 +15,7 @@ KERNEL_SOURCES=git://github.com/raspberrypi/linux.git
 FBTFT_SOURCES=git://github.com/notro/fbtft.git
 ROOT_PATH=""
 TARGET=/usr/bin/armv6j-hardfloat-linux-gnueabi-
+TARGETv7=/usr/bin/armv7a-hardfloat-linux-gnueabi-
 WDIR=./repository_alt
 CONFIG_FILE=""
 RASP_TYPE=1
@@ -50,11 +51,15 @@ while getopts "hkwb:m:c:-:" option; do
 		k ) KEEP_FILES=1;;
 		w ) NO_FBTFT=1;;
 		b ) RASP_TYPE=$OPTARG
-			if ! [[ $RASP_TYPE -eq 1 ]] && ! [[ $RASP_TYPE -eq 2 ]]; then
+			if [[ $RASP_TYPE -ne 1 ]] &&  [[ $RASP_TYPE -ne 2 ]]; then
 				echo "Bad RaspBerry type: $RASP_TYPE"
 				show_help
 				exit 1
-			fi;;
+			fi
+			if [[ $RASP_TYPE -eq 2 ]]; then
+				TARGET=$TARGETv7
+			fi
+			;;
 		m ) ROOT_PATH=$OPTARG
 			if ! [[ -d $ROOT_PATH ]]; then
 				echo "$ROOT_PATH doesn't exist."
