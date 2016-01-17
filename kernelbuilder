@@ -78,11 +78,11 @@ while getopts "hkwb:m:c:-:" option; do
 				without-fbtft ) NO_FBTFT=1;;
 				* ) echo "Unknown option: ${OPTARG}"
 					show_help
-					exit -1 ;;
+					exit 1 ;;
 			esac ;;
 		? ) echo "Unknown option: ${OPTARG}"
 			show_help
-			exit -1 ;;
+			exit 1 ;;
 	esac
 done
 #}}}
@@ -184,7 +184,7 @@ cp .config Makefile ${ROOT_PATH}/usr/src/linux/ >> $LOG 2>&1
 printResult $?
 #}}}
 
-echo -e "\t$HSTAR Cleaning all the stuffs (9/9): " #{{{
+echo -en "\t$HSTAR Cleaning all the stuffs (9/9): " #{{{
 cd ../../
 if [[ $KEEP_FILES -ne 1 ]]; then
 	echo -en "\t\t$HSTAR Deleting stuffs: "
@@ -195,6 +195,8 @@ if [[ $KEEP_FILES -ne 1 ]]; then
 		echo -e "\t\t\tUnable to clean and delete the temporary directory"
 		exit 1
 	fi
+else
+	printResult 0
 fi
 cd .. >> $LOG 2>&1
 #}}}
