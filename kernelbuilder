@@ -18,6 +18,7 @@ TARGET=/usr/bin/armv6j-hardfloat-linux-gnueabi-
 TARGETv7=/usr/bin/armv7a-hardfloat-linux-gnueabi-
 WDIR=./repository_alt
 CONFIG_FILE=""
+INSTALL_SRC=0
 RASP_TYPE=1
 KEEP_FILES=0
 NO_FBTFT=0
@@ -38,6 +39,7 @@ Option's list:
 	-c <file>			Use your own .config file to compile the kernel. Here, you MUST use absolute path to the file
 	-h : --help			Display this help message
 	-k : --keep-files		Keep all the files retrieved (archives, hash, signature, etc)
+	-s : --install-kernel-src	Install the source of the compiled kernel (clean with .config and Makefile)
 	-w : --without-fbtft		Don't include the Notro fbtft drivers
 "
 } #}}}
@@ -45,11 +47,12 @@ Option's list:
 . ./helpers
 
 #{{{ Parameters analyzis
-while getopts "hkwb:m:c:-:" option; do
+while getopts "hkwsb:m:c:-:" option; do
 	case $option in
 		h ) show_help && exit 0 ;;
 		k ) KEEP_FILES=1;;
 		w ) NO_FBTFT=1;;
+		s ) INSTALL_SRC=1 ;;
 		b ) RASP_TYPE=$OPTARG
 			if [[ $RASP_TYPE -ne 1 ]] &&  [[ $RASP_TYPE -ne 2 ]]; then
 				echo "Bad RaspBerry type: $RASP_TYPE"
@@ -75,6 +78,7 @@ while getopts "hkwb:m:c:-:" option; do
 		- ) case $OPTARG in
 				help ) show_help && exit 0 ;;
 				keep-files ) KEEP_FILES=1;;
+				install-kernel-src ) INSTALL_SRC=1;;
 				without-fbtft ) NO_FBTFT=1;;
 				* ) echo "Unknown option: ${OPTARG}"
 					show_help
@@ -179,10 +183,17 @@ cp arch/arm/boot/dts/overlays/README ${ROOT_PATH}/boot/overlays/ >> $LOG 2>&1
 printResult $?
 #}}}
 
-echo -en "\t$HSTAR Installing the kernel config file (8/9): " #{{{
-cp .config Makefile ${ROOT_PATH}/usr/src/linux/ >> $LOG 2>&1
-printResult $?
-#}}}
+if [[ $INSTALL_SRC -eq 1 ]]; then
+	echo -en "\t$HSTAR Installing the kernel sources (8/9): " #{{{
+	cp -R ./* ${ROOT_PATH}/usr/src/linux/ >> $LOG 2>&1
+	printResult $?
+	#}}}
+else
+	echo -en "\t$HSTAR Installing the kernel config file (8/9): " #{{{
+	cp .config Makefile ${ROOT_PATH}/usr/src/linux/ >> $LOG 2>&1
+	printResult $?
+	#}}}
+fi
 
 echo -en "\t$HSTAR Cleaning all the stuffs (9/9): " #{{{
 cd ../../

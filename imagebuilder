@@ -31,6 +31,7 @@ FLAG_FBTFT=""
 FLAG_KEEP_FILES=""
 FLAG_CHECK_SIGN=""
 FLAG_USE_CONFIG=""
+FLAG_KERNEL_SRC=""
 # Check for a correct raspberry type
 # Here we assume that each sector's size is 512 bytes
 DISK_SIZE=$(($(sfdisk -s $DEVICE) * 2))
@@ -61,20 +62,22 @@ Option's list:
 	-k : --keep-files		Keep all the files retrieved (archives, hash, signature, etc)
 	-w : --without-fbtft		Don't include the Notro fbtft drivers
 	-i : --no-auto-net			Disable network interface startup at boot time (for the raspberry without network interface like zero)
+	-s : --install-kernel-src	Install the source of the compiled kernel (clean with .config and Makefile)
 "
 } #}}}
 #}}}
 . ./helpers
 
 #{{{ Parameters analyzis
-while getopts "hcnikwb:d:m:C:H:-:" option; do
+while getopts "hcnikwsb:d:m:C:H:-:" option; do
 	case $option in
 		h ) show_help && exit 0 ;;
 		c ) CHECK_SIGN=0; FLAG_CHECK_SIGN="--dont-check" ;;
 		n ) NO_DISK=1 ;;
+		s ) FLAG_KERNEL_SRC="--install-kernel-src" ;;
 		i ) NO_NET=1 ;;
-		k ) KEEP_FILES=1; FLAG_KEEP_FILES="--keep-files";;
-		w ) NO_FBTFT=1; FLAG_FBTFT="--without-fbtft";;
+		k ) KEEP_FILES=1; FLAG_KEEP_FILES="--keep-files" ;;
+		w ) NO_FBTFT=1; FLAG_FBTFT="--without-fbtft" ;;
 		b ) RASP_TYPE=$OPTARG
 			if [[ $RASP_TYPE -ne 1 ]] && [[ $RASP_TYPE -ne 2 ]]; then
 				echo "Bad RaspBerry type: $RASP_TYPE"
@@ -92,13 +95,15 @@ while getopts "hcnikwb:d:m:C:H:-:" option; do
 				echo "$MOUNT_POINT doesn't exist."
 				show_help
 				exit 1
-			fi;;
+			fi
+			;;
 		d ) DEVICE=$OPTARG
 			if ! [[ -b $DEVICE ]]; then
 				echo "$DEVICE doesn't exist."
 				show_help
 				exit 1
-			fi;;
+			fi
+			;;
 		C ) CONFIG_FILE=$OPTARG
 			if ! [[ -f $CONFIG_FILE ]]; then
 				echo "$CONFIG_FILE doesn't exist."
@@ -111,10 +116,11 @@ while getopts "hcnikwb:d:m:C:H:-:" option; do
 		- ) case $OPTARG in
 				help ) show_help && exit 0 ;;
 				dont-check ) CHECK_SIGN=0; FLAG_CHECK_SIGN="--dont-check" ;;
-				keep-files ) KEEP_FILES=1; FLAG_KEEP_FILES="--keep-files";;
+				keep-files ) KEEP_FILES=1; FLAG_KEEP_FILES="--keep-files" ;;
+				install-kernel-src ) FLAG_KERNEL_SRC="--install-kernel-src" ;;
 				no-disk ) NO_DISK=1 ;;
 				no-auto-net ) NO_NET=1 ;;
-				without-fbtft ) NO_FBTFT=1; FLAG_FBTFT="--without-fbtft";;
+				without-fbtft ) NO_FBTFT=1; FLAG_FBTFT="--without-fbtft" ;;
 				* ) echo "Unknown option: ${OPTARG}"
 					show_help
 					exit -1 ;;
@@ -266,7 +272,7 @@ if [[ $NO_NET -eq 1 ]]; then
 fi
 if [[ $RASP_TYPE -eq 1 ]]; then
 	echo -en "\t$HSTAR Adding binary repository from NeddySeagoon: ";
-	echo "PORTAGE_BINHOST=\"http://grytpype-thynne.org/~roy/BINHOSTS/\"" >> ${MOUNT_POINT}/etc/portage/make.conf >> $LOG 2>&1
+	echo "PORTAGE_BINHOST=\"http://grytpype-thynne.org/~roy/BINHOSTS/gcc-4.x/arm6j/\"" >> ${MOUNT_POINT}/etc/portage/make.conf >> $LOG 2>&1
 	printResult $?
 fi
 echo -en "\t$HSTAR Copying the tools: ";
@@ -279,7 +285,7 @@ printResult $?
 
 echo -e "$HSTAR Installing new kernel (13/15): " #{{{
 cd .. >> $LOG 2>&1
-./kernelbuilder -m $(pwd)/${WDIR}/$MOUNT_POINT -b $RASP_TYPE $FLAG_FBTFT $FLAG_KEEP_FILES $FLAG_USE_CONFIG
+./kernelbuilder -m $(pwd)/${WDIR}/$MOUNT_POINT -b $RASP_TYPE $FLAG_FBTFT $FLAG_KEEP_FILES $FLAG_USE_CONFIG $FLAG_KERNEL_SRC
 cd - >> $LOG 2>&1
 #}}}
 
