@@ -108,7 +108,7 @@ echo -en "\t$HSTAR Checking file's fingerprint (5/11): " #{{{
 checkFingerprint $HASH
 #}}}
 
-if [[ $CHECK_SIGN -ne 0 ]]; then
+if [[ $CHECK_SIGN -eq 1 ]]; then
 	echo -en "\t$HSTAR Retrieving the file's signature (6/11): " #{{{
 	getFile $LOCATION/$SIG
 	#}}}

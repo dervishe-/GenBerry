@@ -272,7 +272,7 @@ if [[ $NO_NET -eq 1 ]]; then
 fi
 if [[ $RASP_TYPE -eq 1 ]]; then
 	echo -en "\t$HSTAR Adding binary repository from NeddySeagoon: ";
-	echo "PORTAGE_BINHOST=\"http://grytpype-thynne.org/~roy/BINHOSTS/gcc-4.x/arm6j/\"" >> ${MOUNT_POINT}/etc/portage/make.conf >> $LOG 2>&1
+	echo "PORTAGE_BINHOST=\"http://grytpype-thynne.org/~roy/BINHOSTS/gcc-4.x/arm6j/\"" >> ${MOUNT_POINT}/etc/portage/make.conf
 	printResult $?
 fi
 echo -en "\t$HSTAR Copying the tools: ";
