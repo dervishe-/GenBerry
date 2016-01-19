@@ -27,6 +27,7 @@ KEEP_FILES=0
 NO_DISK=0
 NO_NET=0
 NO_FBTFT=0
+NO_BINHOST=0
 FLAG_FBTFT=""
 FLAG_KEEP_FILES=""
 FLAG_CHECK_SIGN=""
@@ -63,17 +64,19 @@ Option's list:
 	-w : --without-fbtft		Don't include the Notro fbtft drivers
 	-i : --no-auto-net			Disable network interface startup at boot time (for the raspberry without network interface like zero)
 	-s : --install-kernel-src	Install the source of the compiled kernel (clean with .config and Makefile)
+	-a : --without-binhost		Don't include the predefined binhost (Actually, the binhost is for armv6j made by NeddySeagoon)
 "
 } #}}}
 #}}}
 . ./helpers
 
 #{{{ Parameters analyzis
-while getopts "hcnikwsb:d:m:C:H:-:" option; do
+while getopts "ahcnikwsb:d:m:C:H:-:" option; do
 	case $option in
 		h ) show_help && exit 0 ;;
 		c ) CHECK_SIGN=0; FLAG_CHECK_SIGN="--dont-check" ;;
 		n ) NO_DISK=1 ;;
+		a ) NO_BINHOST=1 ;;
 		s ) FLAG_KERNEL_SRC="--install-kernel-src" ;;
 		i ) NO_NET=1 ;;
 		k ) KEEP_FILES=1; FLAG_KEEP_FILES="--keep-files" ;;
@@ -121,6 +124,7 @@ while getopts "hcnikwsb:d:m:C:H:-:" option; do
 				no-disk ) NO_DISK=1 ;;
 				no-auto-net ) NO_NET=1 ;;
 				without-fbtft ) NO_FBTFT=1; FLAG_FBTFT="--without-fbtft" ;;
+				without-binhost ) NO_BINHOST=1 ;;
 				* ) echo "Unknown option: ${OPTARG}"
 					show_help
 					exit -1 ;;
@@ -270,8 +274,9 @@ if [[ $NO_NET -eq 1 ]]; then
 	rm ${MOUNT_POINT}/etc/runlevels/default/{net.eth0,iptables,ntp-client,netmount,distccd} >> $LOG 2>&1
 	printResult $?
 fi
-if [[ $RASP_TYPE -eq 1 ]]; then
-	echo -en "\t$HSTAR Adding binary repository from NeddySeagoon: ";
+if [[ $RASP_TYPE -eq 1 && NO_BINHOST -eq 0 ]]; then
+	echo -en "\t$HSTAR Adding binary repository: ";
+	echo "#You can read the README file here: http://grytpype-thynne.org/~roy/BINHOSTS/" >> ${MOUNT_POINT}/etc/portage/make.conf
 	echo "PORTAGE_BINHOST=\"http://grytpype-thynne.org/~roy/BINHOSTS/gcc-4.x/arm6j/\"" >> ${MOUNT_POINT}/etc/portage/make.conf
 	printResult $?
 fi
