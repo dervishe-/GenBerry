@@ -23,6 +23,7 @@ HOSTNAME="genBerry"
 RASP_TYPE=1
 VERBOSE=0
 CHECK_SIGN=1
+OVERCLOCKING=0
 KEEP_FILES=0
 NO_DISK=0
 NO_NET=0
@@ -33,6 +34,8 @@ FLAG_KEEP_FILES=""
 FLAG_CHECK_SIGN=""
 FLAG_USE_CONFIG=""
 FLAG_KERNEL_SRC=""
+OC_PARAMETERS_v6="arm_freq=1000\ncore_freq=500\nsdram_freq=500\nover_voltage=6\nforce_turbo=1"
+OC_PARAMETERS_v7="arm_freq=1000\ngpu_mem=128\ncore_freq=500\nsdram_freq=500\nover_voltage=2"
 # Check for a correct raspberry type
 # Here we assume that each sector's size is 512 bytes
 DISK_SIZE=$(($(sfdisk -s $DEVICE) * 2))
@@ -53,25 +56,26 @@ Option's list:
 					Default type is 1
 	-d <dev>			Set the device used to store the system (/dev/mmcblk0)
 	-m <dir>			Set the mount point for the disk (./mnt)
-	-H hostname			Set the hostname
+	-H <hostname>			Set the hostname
+	-C <file>			Use your own .config file to compile the kernel. Here, you MUST use absolute path to the file
 	-h : --help			Display this help message
 	-c : --dont-check		Don't check the several files signature
-	-C <file>			Use your own .config file to compile the kernel. Here, you MUST use absolute path to the file
 	-n : --no-disk			You have to prepare the disk yourself (partitionning, formating and mounting) and you MUST use this option
 					in conjonction with -m in order to indicate the mount point. In this case, it is necessary to adjust the /etc/fstab
 					located in the media.
 	-k : --keep-files		Keep all the files retrieved (archives, hash, signature, etc)
 	-w : --without-fbtft		Don't include the Notro fbtft drivers
-	-i : --no-auto-net			Disable network interface startup at boot time (for the raspberry without network interface like zero)
+	-i : --no-auto-net		Disable network interface startup at boot time (for the raspberry without network interface like zero)
 	-s : --install-kernel-src	Install the source of the compiled kernel (clean with .config and Makefile)
 	-a : --without-binhost		Don't include the predefined binhost (Actually, the binhost is for armv6j made by NeddySeagoon)
+	-o : --overclock		Activate overclocking options
 "
 } #}}}
 #}}}
 . ./helpers
 
 #{{{ Parameters analyzis
-while getopts "ahcnikwsb:d:m:C:H:-:" option; do
+while getopts "aohcnikwsb:d:m:C:H:-:" option; do
 	case $option in
 		h ) show_help && exit 0 ;;
 		c ) CHECK_SIGN=0; FLAG_CHECK_SIGN="--dont-check" ;;
@@ -79,6 +83,7 @@ while getopts "ahcnikwsb:d:m:C:H:-:" option; do
 		a ) NO_BINHOST=1 ;;
 		s ) FLAG_KERNEL_SRC="--install-kernel-src" ;;
 		i ) NO_NET=1 ;;
+		o ) OVERCLOCKING=1 ;;
 		k ) KEEP_FILES=1; FLAG_KEEP_FILES="--keep-files" ;;
 		w ) NO_FBTFT=1; FLAG_FBTFT="--without-fbtft" ;;
 		b ) RASP_TYPE=$OPTARG
@@ -123,6 +128,7 @@ while getopts "ahcnikwsb:d:m:C:H:-:" option; do
 				install-kernel-src ) FLAG_KERNEL_SRC="--install-kernel-src" ;;
 				no-disk ) NO_DISK=1 ;;
 				no-auto-net ) NO_NET=1 ;;
+				overclock ) OVERCLOCKING=1 ;;
 				without-fbtft ) NO_FBTFT=1; FLAG_FBTFT="--without-fbtft" ;;
 				without-binhost ) NO_BINHOST=1 ;;
 				* ) echo "Unknown option: ${OPTARG}"
@@ -285,6 +291,13 @@ cp -v ../{helpers,{image,kernel}builder,portage2squash} ${MOUNT_POINT}/root/tool
 printResult $?
 echo -en "\t$HSTAR Fixing the hostname to ${HOSTNAME}: ";
 echo "hostname=\"$HOSTNAME\"" > ${MOUNT_POINT}/etc/conf.d/hostname
+printResult $?
+echo -en "\t$HSTAR Enabling overclocking parameters: ";
+if [[ $NO_NET -eq 1 ]]; then
+	echo -e $OC_PARAMETERS_v6 >> ${MOUNT_POINT}/boot/config.txt
+else
+	echo -e $OC_PARAMETERS_v7 >> ${MOUNT_POINT}/boot/config.txt
+fi
 printResult $?
 #}}}
 
