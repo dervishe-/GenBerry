@@ -65,7 +65,7 @@ Option's list:
 	-s : --install-kernel-src       Install the source of the compiled kernel (clean with .config and Makefile)
 	-a : --without-binhost          Don't include the predefined binhost (Actually, the binhost is for armv6j made by NeddySeagoon)
 	-o : --overclock                Activate overclocking options
-``
+```
 
 if all goes, just unplug the sdcard and put it in your raspberry Pi.
 
