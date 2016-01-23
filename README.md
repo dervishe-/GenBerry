@@ -43,27 +43,29 @@ I you want the script to check the signature of the several files you will need 
 * download the tools: git clone https://github.com/dervishe-/genBerry.git
 * make them executable: cd genBerry && chmod +x ./
 * execute: imagebuilder <options>
-```bash
+```
 Option's list:
 
--b <type>					Type of the board: 
-								1/ for raspberryPi (1 A A+ B B+ and zero) and 
-								2/ for raspberryPi (2 B)
-								Default type is 1
--d <dev>					Set the device used to store the system (/dev/mmcblk0)
--m <dir>					Set the mount point for the disk (./mnt)
--H hostname					Set the hostname
--h : --help					Display this help message
--c : --dont-check			Don't check the several files signature
--C <file>					Use your own .config file to compile the kernel. Here, you MUST use absolute path to the file
--n : --no-disk				You have to prepare the disk yourself (partitionning, formating and mounting) and you MUST use this option
-							in conjonction with -m in order to indicate the mount point. In this case, it is necessary to adjust the /etc/fstab
-							located in the media.
--k : --keep-files			Keep all the files retrieved (archives, hash, signature, etc)
--w : --without-fbtft		Don't include the Notro fbtft drivers
--i : --no-auto-net			Disable network interface startup at boot time (for the raspberry without network interface like zero)
--s : --install-kernel-src	Install the source of the compiled kernel (clean with .config and Makefile)
-```
+	-b <type>                       Type of the board: 
+									1/ for raspberryPi (1 A A+ B B+ and zero) and 
+									2/ for raspberryPi (2 B)
+									Default type is 1
+	-d <dev>                        Set the device used to store the system (/dev/mmcblk0)
+	-m <dir>                        Set the mount point for the disk (./mnt)
+	-H <hostname>                   Set the hostname
+	-C <file>                       Use your own .config file to compile the kernel. Here, you MUST use absolute path to the file
+	-h : --help                     Display this help message
+	-c : --dont-check               Don't check the several files signature
+	-n : --no-disk                  You have to prepare the disk yourself (partitionning, formating and mounting) and you MUST use this option
+									in conjonction with -m in order to indicate the mount point. In this case, it is necessary to adjust the /etc/fstab
+									located in the media.
+	-k : --keep-files               Keep all the files retrieved (archives, hash, signature, etc)
+	-w : --without-fbtft            Don't include the Notro fbtft drivers
+	-i : --no-auto-net              Disable network interface startup at boot time (for the raspberry without network interface like zero)
+	-s : --install-kernel-src       Install the source of the compiled kernel (clean with .config and Makefile)
+	-a : --without-binhost          Don't include the predefined binhost (Actually, the binhost is for armv6j made by NeddySeagoon)
+	-o : --overclock                Activate overclocking options
+``
 
 if all goes, just unplug the sdcard and put it in your raspberry Pi.
 
