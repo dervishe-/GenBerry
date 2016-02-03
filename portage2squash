@@ -68,12 +68,11 @@ if [[ $CHECK_SIGN -ne 0 ]]; then
 	echo -en "\t\t$HSTAR Is gpg installed ? "
 	checkGPG
 	echo -en "\t$HSTAR Are the necessary public keys available ? "
-	NB_PK=$(gpg -k | grep "Gentoo\|dervishe@yahoo.fr" | wc -l)
-	if [[ $NB_PK -ne 4 ]]; then
+	NB_PK=$(gpg -k | grep "Gentoo" | wc -l)
+	if [[ $NB_PK -ne 3 ]]; then
 		printResult 1
 		echo -e "\tYou choose to verify the signature of the several downloaded files but the signing keys are missing."
 		echo -e "\tYou have to import them before from here:"
-		echo -e "\t\thttps://keybase.io/dervishe/key.asc and"
 		echo -e "\t\thttps://www.gentoo.org/downloads/signatures/"
 		exit 1
 	fi
