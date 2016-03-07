@@ -71,8 +71,19 @@ if all goes, just unplug the sdcard and put it in your raspberry Pi.
 
 * The temporary password for root is: toor  (**Don't forget to update it...**)
 
+There is a common user: genberry which password is **genberry**
+
+sshd is running on the rPi and only accept non root users.
+
+Just login once and CHANGE all the default passwords (genberry and root users)
+
 For more information, consult the help: `imagebuilder --help`
 
 Distcc is installed, you have to configure it. 
 
 Once logged in your rPi, then you can make a: `emerge -uD @world` in order to update (if needed) the system.
+
+UPDATE:
+
+* 03/07/2016: The two base images are up to date (with the last glibc) and there is a default user (genberry)
+
