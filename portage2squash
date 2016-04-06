@@ -67,7 +67,7 @@ echo -e "\t$HSTAR Checking requirements (1/11): " #{{{
 if [[ $CHECK_SIGN -ne 0 ]]; then
 	echo -en "\t\t$HSTAR Is gpg installed ? "
 	checkGPG
-	echo -en "\t$HSTAR Are the necessary public keys available ? "
+	echo -en "\t\t$HSTAR Are the necessary public keys available ? "
 	NB_PK=$(gpg -k | grep "Gentoo" | wc -l)
 	if [[ $NB_PK -ne 3 ]]; then
 		printResult 1

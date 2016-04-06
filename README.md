@@ -54,6 +54,7 @@ Option's list:
 	-m <dir>                        Set the mount point for the disk (./mnt)
 	-H <hostname>                   Set the hostname
 	-C <file>                       Use your own .config file to compile the kernel. Here, you MUST use absolute path to the file
+	-B <branch>                     Specify the branch you want for the kernel (rpy-4.1.y)
 	-h : --help                     Display this help message
 	-c : --dont-check               Don't check the several files signature
 	-n : --no-disk                  You have to prepare the disk yourself (partitionning, formating and mounting) and you MUST use this option

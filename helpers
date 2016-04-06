@@ -138,3 +138,19 @@ function checkCrossdev() { #{{{
 	[[ $BUFFER -eq  1 ]] && exit 1
 }
 #}}}
+
+#	Take 1 argument:
+#		* The kernel source URI
+function getBranch() { #{{{
+	git ls-remote $1 | grep -v "pull\|patch" | grep head | cut -d '/' -f 3 2> $LOG
+}
+#}}}
+
+#	Take 1 argument:
+#		* The branch name
+#		* The kernel source URI
+function checkBranch() { #{{{
+	getBranch $2 | grep "^$1$" >> $LOG 2>&1
+	echo $?
+}
+#}}}

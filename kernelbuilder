@@ -13,9 +13,11 @@
 #{{{ Parameters
 KERNEL_SOURCES=git://github.com/raspberrypi/linux.git
 FBTFT_SOURCES=git://github.com/notro/fbtft.git
+BRANCH=rpi-4.1.y
 ROOT_PATH=""
 TARGET=/usr/bin/armv6j-hardfloat-linux-gnueabi-
 TARGETv7=/usr/bin/armv7a-hardfloat-linux-gnueabi-
+TARGETv8=/usr/bin/armv7a-hardfloat-linux-gnueabi-
 WDIR=./repository_alt
 CONFIG_FILE=""
 INSTALL_SRC=0
@@ -33,10 +35,13 @@ Option's list:
 
 	-b <type>			Type of the board: [Mandatory]
 					1/ for raspberryPi (1 A A+ B B+ and zero) and 
-					2/ for raspberryPi (2 A and B)
+					2/ for raspberryPi (2 B)
+					3/ for raspberryPi (3 B)
 					Default type is 1
-	-m <dir>			Set the mount point for the disk (./mnt) [Mandatory]
+	-m <dir>			Set the mount point for the disk [Mandatory]
 	-c <file>			Use your own .config file to compile the kernel. Here, you MUST use absolute path to the file
+	-B <branch>				Install a specific kernel branch ($BRANCH)
+							 (from rPi kernel github repository)
 	-h : --help			Display this help message
 	-k : --keep-files		Keep all the files retrieved (archives, hash, signature, etc)
 	-s : --install-kernel-src	Install the source of the compiled kernel (clean with .config and Makefile)
@@ -47,20 +52,22 @@ Option's list:
 . ./helpers
 
 #{{{ Parameters analyzis
-while getopts "hkwsb:m:c:-:" option; do
+while getopts "hkwsb:m:c:B:-:" option; do
 	case $option in
 		h ) show_help && exit 0 ;;
 		k ) KEEP_FILES=1;;
 		w ) NO_FBTFT=1;;
 		s ) INSTALL_SRC=1 ;;
 		b ) RASP_TYPE=$OPTARG
-			if [[ $RASP_TYPE -ne 1 ]] &&  [[ $RASP_TYPE -ne 2 ]]; then
+			if [[ $RASP_TYPE -ne 1 ]] && [[ $RASP_TYPE -ne 2 ]] && [[ $RASP_TYPE -ne 3 ]]; then
 				echo "Bad RaspBerry type: $RASP_TYPE"
 				show_help
 				exit 1
 			fi
 			if [[ $RASP_TYPE -eq 2 ]]; then
 				TARGET=$TARGETv7
+			elif [[ $RASP_TYPE -eq 3 ]]; then
+				TARGET=$TARGETv8
 			fi
 			;;
 		m ) ROOT_PATH=$OPTARG
@@ -74,6 +81,13 @@ while getopts "hkwsb:m:c:-:" option; do
 				echo "$CONFIG_FILE doesn't exist."
 				show_help
 				exit 1
+			fi;;
+		B ) if ! [[ $(checkBranch $OPTARG $KERNEL_SOURCES) -eq 0 ]]; then
+				echo "You have to provide a valid branch name:"
+				getBranch $KERNEL_SOURCES
+				exit 1
+			else
+				BRANCH="$OPTARG";
 			fi;;
 		- ) case $OPTARG in
 				help ) show_help && exit 0 ;;
@@ -111,8 +125,8 @@ echo -en "\t$HSTAR Building working dir (2/9): " #{{{
 printResult $?
 #}}}
 
-echo -en "\t$HSTAR Retrieving the kernel source (3/9): " #{{{
-[[ -d ./linux ]] || git clone --depth 1 $KERNEL_SOURCES >> $LOG 2>&1
+echo -en "\t$HSTAR Retrieving the kernel source branch: $BRANCH (3/9): " #{{{
+[[ -d ./linux ]] || git clone -b $BRANCH --depth 1 $KERNEL_SOURCES >> $LOG 2>&1
 printResult $?
 #}}}
 
@@ -139,16 +153,18 @@ if [[ $CONFIG_FILE = "" ]]; then
 		make ARCH=arm bcmrpi_defconfig >> $LOG 2>&1
 	elif [[ $RASP_TYPE -eq 2 ]]; then
 		make ARCH=arm bcm2709_defconfig >> $LOG 2>&1
+	elif [[ $RASP_TYPE -eq 3 ]]; then
+		make ARCH=arm bcm2709_defconfig >> $LOG 2>&1
 	fi
 	printResult $?
 else
 	echo -en "\t\t$HSTAR Using your config file: "
-	cp -v $CONFIG_FILE . >> $LOG 2>&1
+	cp -v $CONFIG_FILE ./.config >> $LOG 2>&1
 	printResult $?
 fi
 
 echo -en "\t\t$HSTAR Configuring the kernel: "
-make ARCH=arm CROSS_COMPILE=$TARGET oldconfig >> $LOG 2>&1
+make ARCH=arm CROSS_COMPILE=$TARGET olddefconfig >> $LOG 2>&1
 printResult $?
 
 echo -en "\t\t$HSTAR Compiling the kernel: "
@@ -174,7 +190,7 @@ cd - >> $LOG 2>&1
 echo -en "\t$HSTAR Installing the kernel (7/9): " #{{{
 if [[ $RASP_TYPE -eq 1 ]]; then
 	imagetool-uncompressed.py arch/arm/boot/Image ${ROOT_PATH}/boot/kernel.img >> $LOG 2>&1
-elif [[ $RASP_TYPE -eq 2 ]]; then
+elif [[ $RASP_TYPE -eq 2 ]] || [[ $RASP_TYPE -eq 3 ]]; then
 	cp arch/arm/boot/zImage ${ROOT_PATH}/boot/kernel7.img >> $LOG 2>&1
 fi
 cp arch/arm/boot/dts/*.dtb ${ROOT_PATH}/boot/ >> $LOG 2>&1
@@ -185,7 +201,7 @@ printResult $?
 
 if [[ $INSTALL_SRC -eq 1 ]]; then
 	echo -en "\t$HSTAR Installing the kernel sources (8/9): " #{{{
-	cp -R ./* ${ROOT_PATH}/usr/src/linux/ >> $LOG 2>&1
+	cp -R ../linux ${ROOT_PATH}/usr/src/ >> $LOG 2>&1
 	printResult $?
 	#}}}
 else

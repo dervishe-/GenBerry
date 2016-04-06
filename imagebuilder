@@ -14,6 +14,7 @@
 LOCATION=https://debrouillonet.org/
 FILE=genBerry.tar.xz
 FILEv7=genBerry_v7.tar.xz
+FILEv8=genBerry_v8.tar.xz
 SIG=${FILE}.gpgsig
 HASH=${FILE}.md5sum
 DEVICE=/dev/mmcblk0
@@ -34,6 +35,8 @@ FLAG_KEEP_FILES=""
 FLAG_CHECK_SIGN=""
 FLAG_USE_CONFIG=""
 FLAG_KERNEL_SRC=""
+KERNEL_BRANCH=""
+KERNEL_SOURCES=git://github.com/raspberrypi/linux.git
 OC_PARAMETERS_v6="arm_freq=1000\ncore_freq=500\nsdram_freq=500\nover_voltage=6\nforce_turbo=1"
 OC_PARAMETERS_v7="arm_freq=1000\ngpu_mem=128\ncore_freq=500\nsdram_freq=500\nover_voltage=2"
 # Check for a correct raspberry type
@@ -53,13 +56,16 @@ Option's list:
 	-b <type>			Type of the board: 
 					1/ for raspberryPi (1 A A+ B B+ and zero) and 
 					2/ for raspberryPi (2 B)
+					3/ for raspberryPi (3 B)
 					Default type is 1
-	-d <dev>			Set the device used to store the system (/dev/mmcblk0)
-	-m <dir>			Set the mount point for the disk (./mnt)
+	-d <dev>			Set the device used to store the system ($DEVICE)
+	-m <dir>			Set the mount point for the disk ($MOUNT_POINT)
 	-H <hostname>			Set the hostname
-	-C <file>			Use your own .config file to compile the kernel. Here, you MUST use absolute path to the file
+	-c <file>			Use your own .config file to compile the kernel. Here, you MUST use absolute path to the file
+	-B <branch>				Install a specific kernel branch ($KERNEL_BRANCH)
+							 (from rPi kernel github repository)
 	-h : --help			Display this help message
-	-c : --dont-check		Don't check the several files signature
+	-C : --dont-check		Don't check the several files signature
 	-n : --no-disk			You have to prepare the disk yourself (partitionning, formating and mounting) and you MUST use this option
 					in conjonction with -m in order to indicate the mount point. In this case, it is necessary to adjust the /etc/fstab
 					located in the media.
@@ -75,10 +81,10 @@ Option's list:
 . ./helpers
 
 #{{{ Parameters analyzis
-while getopts "aohcnikwsb:d:m:C:H:-:" option; do
+while getopts "aohCnikwsb:d:m:c:H:B:-:" option; do
 	case $option in
 		h ) show_help && exit 0 ;;
-		c ) CHECK_SIGN=0; FLAG_CHECK_SIGN="--dont-check" ;;
+		C ) CHECK_SIGN=0; FLAG_CHECK_SIGN="--dont-check" ;;
 		n ) NO_DISK=1 ;;
 		a ) NO_BINHOST=1 ;;
 		s ) FLAG_KERNEL_SRC="--install-kernel-src" ;;
@@ -87,7 +93,7 @@ while getopts "aohcnikwsb:d:m:C:H:-:" option; do
 		k ) KEEP_FILES=1; FLAG_KEEP_FILES="--keep-files" ;;
 		w ) NO_FBTFT=1; FLAG_FBTFT="--without-fbtft" ;;
 		b ) RASP_TYPE=$OPTARG
-			if [[ $RASP_TYPE -ne 1 ]] && [[ $RASP_TYPE -ne 2 ]]; then
+			if [[ $RASP_TYPE -ne 1 ]] && [[ $RASP_TYPE -ne 2 ]] && [[ $RASP_TYPE -ne 3 ]]; then
 				echo "Bad RaspBerry type: $RASP_TYPE"
 				show_help
 				exit 1
@@ -96,30 +102,41 @@ while getopts "aohcnikwsb:d:m:C:H:-:" option; do
 				FILE=$FILEv7
 				SIG=${FILE}.gpgsig
 				HASH=${FILE}.md5sum
+			elif [[ $RASP_TYPE -eq 3 ]]; then
+				FILE=$FILEv8
+				SIG=${FILE}.gpgsig
+				HASH=${FILE}.md5sum
 			fi
 			;;
 		m ) MOUNT_POINT=$OPTARG
 			if ! [[ -d $MOUNT_POINT ]]; then
-				echo "$MOUNT_POINT doesn't exist."
+				echo "The mount point \"$MOUNT_POINT\" doesn't exist."
 				show_help
 				exit 1
 			fi
 			;;
 		d ) DEVICE=$OPTARG
 			if ! [[ -b $DEVICE ]]; then
-				echo "$DEVICE doesn't exist."
+				echo "The device \"$DEVICE\" is not present."
 				show_help
 				exit 1
 			fi
 			;;
-		C ) CONFIG_FILE=$OPTARG
+		c ) CONFIG_FILE=$OPTARG
 			if ! [[ -f $CONFIG_FILE ]]; then
-				echo "$CONFIG_FILE doesn't exist."
+				echo "The config file \"$CONFIG_FILE\" doesn't exist."
 				show_help
 				exit 1
 			fi
 			FLAG_USE_CONFIG="-c $CONFIG_FILE"
 			;;
+		B ) if ! [[ $(checkBranch $OPTARG $KERNEL_SOURCES) -eq 0 ]]; then
+				echo "You have to provide a valid branch name:"
+				getBranch $KERNEL_SOURCES
+				exit 1
+			else
+				KERNEL_BRANCH="-B $OPTARG";
+			fi;;
 		H ) HOSTNAME=$OPTARG ;;
 		- ) case $OPTARG in
 				help ) show_help && exit 0 ;;
@@ -303,7 +320,7 @@ printResult $?
 
 echo -e "$HSTAR Installing new kernel (13/15): " #{{{
 cd .. >> $LOG 2>&1
-./kernelbuilder -m $(pwd)/${WDIR}/$MOUNT_POINT -b $RASP_TYPE $FLAG_FBTFT $FLAG_KEEP_FILES $FLAG_USE_CONFIG $FLAG_KERNEL_SRC
+./kernelbuilder -m $(pwd)/${WDIR}/$MOUNT_POINT -b $RASP_TYPE $FLAG_FBTFT $FLAG_KEEP_FILES $FLAG_USE_CONFIG $KERNEL_BRANCH $FLAG_KERNEL_SRC
 cd - >> $LOG 2>&1
 #}}}
 
