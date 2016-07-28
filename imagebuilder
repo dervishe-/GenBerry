@@ -39,11 +39,7 @@ KERNEL_BRANCH=""
 KERNEL_SOURCES=git://github.com/raspberrypi/linux.git
 OC_PARAMETERS_v6="arm_freq=1000\ncore_freq=500\nsdram_freq=500\nover_voltage=6\nforce_turbo=1"
 OC_PARAMETERS_v7="arm_freq=1000\ngpu_mem=128\ncore_freq=500\nsdram_freq=500\nover_voltage=2"
-# Check for a correct raspberry type
-# Here we assume that each sector's size is 512 bytes
-DISK_SIZE=$(($(sfdisk -s $DEVICE) * 2))
 LAYOUT="2048,65536,c\n67584,,83"
-[[ $DISK_SIZE -lt 8388608 ]] && TAG_EXT4="-T small" || TAG_EXT4=""
 #}}}
 #{{{ Library
 function show_help() #{{{
@@ -232,6 +228,9 @@ if [[ $CHECK_SIGN -ne 0 ]]; then
 fi
 
 if [[ $NO_DISK -eq 0 ]]; then
+	# Here we assume that each sector's size is 512 bytes
+	DISK_SIZE=$(($(sfdisk -s $DEVICE) * 2))
+	[[ $DISK_SIZE -lt 8388608 ]] && TAG_EXT4="-T small" || TAG_EXT4=""
 	echo -en "$HSTAR Partitionning the sdcard (8/15): " #{{{
 	echo -e $LAYOUT | sfdisk $DEVICE >> $LOG 2>&1
 	partprobe $DEVICE >> $LOG 2>&1

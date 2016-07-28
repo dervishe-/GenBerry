@@ -11,7 +11,7 @@
 #
 
 LOG=/tmp/genBerry.log
-DELAY=3
+DELAY=5
 
 # Log file Header
 echo -e "\n\n#############################################################" >> $LOG

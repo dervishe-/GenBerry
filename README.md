@@ -43,20 +43,25 @@ I you want the script to check the signature of the several files you will need 
 * download the tools: git clone https://github.com/dervishe-/genBerry.git
 * make them executable: cd genBerry && chmod +x ./
 * execute: imagebuilder <options>
-```
+* You can always follow the several operations in another terminal with the command:
+
+	tail -f /tmp/genBerry.log
+
 Option's list:
 
 	-b <type>                       Type of the board: 
 									1/ for raspberryPi (1 A A+ B B+ and zero) and 
 									2/ for raspberryPi (2 B)
+									3/ for raspberryPi (3 B)
 									Default type is 1
 	-d <dev>                        Set the device used to store the system (/dev/mmcblk0)
 	-m <dir>                        Set the mount point for the disk (./mnt)
 	-H <hostname>                   Set the hostname
-	-C <file>                       Use your own .config file to compile the kernel. Here, you MUST use absolute path to the file
+	-c <file>                       Use your own .config file to compile the kernel. Here, you MUST use absolute path to the file
 	-B <branch>                     Specify the branch you want for the kernel (rpy-4.1.y)
+
 	-h : --help                     Display this help message
-	-c : --dont-check               Don't check the several files signature
+	-C : --dont-check               Don't check the several files signature
 	-n : --no-disk                  You have to prepare the disk yourself (partitionning, formating and mounting) and you MUST use this option
 									in conjonction with -m in order to indicate the mount point. In this case, it is necessary to adjust the /etc/fstab
 									located in the media.
@@ -86,5 +91,9 @@ Once logged in your rPi, then you can make a: `emerge -uD @world` in order to up
 
 UPDATE:
 
-* 03/07/2016: The two base images are up to date (with the last glibc) and there is a default user (genberry)
+* 28/07/2016: The three images are up to date
+			  The rPi 3 is supported
+			  Possibility to choose f2fs filesystem for the root partition
+
+* 03/07/2015: The two base images are up to date (with the last glibc) and there is a default user (genberry)
 

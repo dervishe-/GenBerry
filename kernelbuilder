@@ -13,7 +13,7 @@
 #{{{ Parameters
 KERNEL_SOURCES=git://github.com/raspberrypi/linux.git
 FBTFT_SOURCES=git://github.com/notro/fbtft.git
-BRANCH=rpi-4.1.y
+BRANCH=rpi-4.7.y
 ROOT_PATH=""
 TARGET=/usr/bin/armv6j-hardfloat-linux-gnueabi-
 TARGETv7=/usr/bin/armv7a-hardfloat-linux-gnueabi-
