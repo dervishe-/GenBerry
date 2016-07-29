@@ -22,6 +22,7 @@ MOUNT_POINT=mnt
 WDIR=repository
 HOSTNAME="genBerry"
 RASP_TYPE=1
+ROOT_FS=ext4
 VERBOSE=0
 CHECK_SIGN=1
 OVERCLOCKING=0
@@ -71,18 +72,20 @@ Option's list:
 	-s : --install-kernel-src	Install the source of the compiled kernel (clean with .config and Makefile)
 	-a : --without-binhost		Don't include the predefined binhost (Actually, the binhost is for armv6j made by NeddySeagoon)
 	-o : --overclock		Activate overclocking options
+	-f : --use-f2fs			Use F2FS instead of ext4 as a root filesystem
 "
 } #}}}
 #}}}
 . ./helpers
 
 #{{{ Parameters analyzis
-while getopts "aohCnikwsb:d:m:c:H:B:-:" option; do
+while getopts "faohCnikwsb:d:m:c:H:B:-:" option; do
 	case $option in
 		h ) show_help && exit 0 ;;
 		C ) CHECK_SIGN=0; FLAG_CHECK_SIGN="--dont-check" ;;
 		n ) NO_DISK=1 ;;
 		a ) NO_BINHOST=1 ;;
+		f ) ROOT_FS=f2fs ;;
 		s ) FLAG_KERNEL_SRC="--install-kernel-src" ;;
 		i ) NO_NET=1 ;;
 		o ) OVERCLOCKING=1 ;;
@@ -144,6 +147,7 @@ while getopts "aohCnikwsb:d:m:c:H:B:-:" option; do
 				overclock ) OVERCLOCKING=1 ;;
 				without-fbtft ) NO_FBTFT=1; FLAG_FBTFT="--without-fbtft" ;;
 				without-binhost ) NO_BINHOST=1 ;;
+				use-f2fs ) ROOT_FS=f2fs ;;
 				* ) echo "Unknown option: ${OPTARG}"
 					show_help
 					exit -1 ;;
@@ -230,7 +234,9 @@ fi
 if [[ $NO_DISK -eq 0 ]]; then
 	# Here we assume that each sector's size is 512 bytes
 	DISK_SIZE=$(($(sfdisk -s $DEVICE) * 2))
-	[[ $DISK_SIZE -lt 8388608 ]] && TAG_EXT4="-T small" || TAG_EXT4=""
+	if [[ $ROOT_FS = "ext4" ]]; then 
+		[[ $DISK_SIZE -lt 8388608 ]] && TAG_EXT4="-T small" || TAG_EXT4=""
+	fi
 	echo -en "$HSTAR Partitionning the sdcard (8/15): " #{{{
 	echo -e $LAYOUT | sfdisk $DEVICE >> $LOG 2>&1
 	partprobe $DEVICE >> $LOG 2>&1
@@ -249,8 +255,12 @@ mkfs.vfat -F 16 $BOOT >> $LOG 2>&1
 BUFFER=$?
 printResult $BUFFER
 [[ $BUFFER -eq 0 ]] || exit 1
-echo -en "\t$HSTAR $ROOT in ext4: "
-mkfs.ext4 $TAG_EXT4 $ROOT >> $LOG 2>&1
+echo -en "\t$HSTAR $ROOT in $ROOT_FS: "
+if [[ $ROOT_FS = "ext4" ]]; then 
+	mkfs.ext4 $TAG_EXT4 $ROOT >> $LOG 2>&1
+else
+	mkfs.f2fs $ROOT >> $LOG 2>&1
+fi
 BUFFER=$?
 printResult $BUFFER
 [[ $BUFFER -eq 0 ]] || exit 1
@@ -313,6 +323,16 @@ if [[ $NO_NET -eq 1 ]]; then
 	echo -e $OC_PARAMETERS_v6 >> ${MOUNT_POINT}/boot/config.txt
 else
 	echo -e $OC_PARAMETERS_v7 >> ${MOUNT_POINT}/boot/config.txt
+fi
+printResult $?
+echo -en "\t$HSTAR Fixing filesystem type in fstab: ";
+if [[ $ROOT_FS = "f2fs" ]]; then 
+	sed -i 's/ext4/f2fs/' ${MOUNT_POINT}/etc/fstab >> $LOG 2>&1
+fi
+printResult $?
+echo -en "\t$HSTAR Fixing filesystem type in cmdline.txt: ";
+if [[ $ROOT_FS = "f2fs" ]]; then 
+	sed -i 's/ext4/f2fs/' ${MOUNT_POINT}/boot/cmdline.txt >> $LOG 2>&1
 fi
 printResult $?
 #}}}

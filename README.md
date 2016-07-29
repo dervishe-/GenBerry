@@ -71,6 +71,7 @@ Option's list:
 	-s : --install-kernel-src       Install the source of the compiled kernel (clean with .config and Makefile)
 	-a : --without-binhost          Don't include the predefined binhost (Actually, the binhost is for armv6j made by NeddySeagoon)
 	-o : --overclock                Activate overclocking options
+	-f : --use-f2fs                 Use f2fs instead of ext4 as a root filesystem
 ```
 
 if all goes, just unplug the sdcard and put it in your raspberry Pi.
@@ -91,6 +92,7 @@ Once logged in your rPi, then you can make a: `emerge -uD @world` in order to up
 
 UPDATE:
 
+* 29/07/2016: Adding possibility to choose f2fs instead of ext4 for the root partition filesystem
 * 28/07/2016: The rPi 3 is supported
 
 * 03/07/2015: The two base images are up to date (with the last glibc) and there is a default user (genberry)
