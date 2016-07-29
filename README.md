@@ -91,9 +91,7 @@ Once logged in your rPi, then you can make a: `emerge -uD @world` in order to up
 
 UPDATE:
 
-* 28/07/2016: The three images are up to date
-			  The rPi 3 is supported
-			  Possibility to choose f2fs filesystem for the root partition
+* 28/07/2016: The rPi 3 is supported
 
 * 03/07/2015: The two base images are up to date (with the last glibc) and there is a default user (genberry)
 
