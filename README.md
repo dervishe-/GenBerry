@@ -1,6 +1,13 @@
 # genBerry
 Sort of Gentoo stage 4 for RaspberryPi with several tools.
 
+UPDATE:
+
+* 30/07/2016: Enabling uart and serial console on rPi3 archive
+* 29/07/2016: Adding possibility to choose f2fs instead of ext4 for the root partition filesystem
+* 28/07/2016: The rPi 3 is supported
+* 03/07/2015: The two base images are up to date (with the last glibc) and there is a default user (genberry)
+
 This collection of scripts:
 * helpers
 * imagebuilder
@@ -89,11 +96,4 @@ For more information, consult the help: `imagebuilder --help`
 Distcc is installed, you have to configure it. 
 
 Once logged in your rPi, then you can make a: `emerge -uD @world` in order to update (if needed) the system.
-
-UPDATE:
-
-* 29/07/2016: Adding possibility to choose f2fs instead of ext4 for the root partition filesystem
-* 28/07/2016: The rPi 3 is supported
-
-* 03/07/2015: The two base images are up to date (with the last glibc) and there is a default user (genberry)
 
