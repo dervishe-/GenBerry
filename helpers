@@ -93,6 +93,15 @@ function checkGPG() #{{{
 }
 #}}}
 
+function checkF2FS() #{{{
+{
+	which mkfs.f2fs >> $LOG 2>&1
+	local BUFFER=$?
+	printResult $BUFFER
+	[[ $BUFFER -eq 1 ]] && exit 1
+}
+#}}}
+
 function checkKBT() #{{{
 {
 	which imagetool-uncompressed.py >> $LOG 2>&1

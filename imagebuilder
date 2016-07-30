@@ -187,6 +187,10 @@ if [[ $NO_DISK -eq 0 ]]; then
 	printResult $BUFFER
 	[[ $BUFFER -eq 1 ]] && exit 1
 fi
+if [[ $ROOT_FS = "f2fs" ]]; then
+	echo -en "\t$HSTAR Is f2fs tools installed ? "
+	checkF2FS
+fi
 echo -en "\t$HSTAR Are you root ? "
 checkRoot
 echo -en "\t$HSTAR Are you connected ? "
@@ -351,6 +355,9 @@ cd - > /dev/null 2>&1
 #}}}
 
 echo -e "$HSTAR Cleaning all the stuffs (15/15): " #{{{
+echo -en "\t$HSTAR Fixing date for the first run: "
+find $MOUNT_POINT -exec touch -a -m -t 197001010001 {} \; >> $LOG 2>&1
+printResult $?
 echo -en "\t$HSTAR Syncing sdcard: "
 sync && printResult 0
 echo -en "\t$HSTAR Unmounting directory: "
