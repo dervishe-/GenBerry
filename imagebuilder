@@ -188,7 +188,7 @@ if [[ $NO_DISK -eq 0 ]]; then
 	[[ $BUFFER -eq 1 ]] && exit 1
 fi
 if [[ $ROOT_FS = "f2fs" ]]; then
-	echo -en "\t$HSTAR Is f2fs tools installed ? "
+	echo -en "\t$HSTAR Are f2fs tools installed ? "
 	checkF2FS
 fi
 echo -en "\t$HSTAR Are you root ? "
