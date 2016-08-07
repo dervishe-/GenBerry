@@ -1,0 +1,35 @@
+#!/bin/bash
+# vim: foldmarker={{{,}}}
+#
+# portageupdate
+# Author: Alexandre Keledjian <dervishe@yahoo.fr>
+# Version: 1.0
+# License: GPLv3
+# 
+#
+# This script update the portage tree as a cronjob
+#
+
+MOUNT_POINT=/usr/portage
+TOOLS_DIR=/root/tools/
+LOCK=/var/lock/portageupdate.lock
+LOG=/var/log/portageupdate.log
+
+[[ -f $LOCK ]] && exit 0
+
+cd $TOOLS_DIR
+touch $LOCK $LOG
+[[ $(cat /proc/mounts | grep $MOUNT_POINT | wc -l) -gt 0 ]] && umount $MOUNT_POINT >> $LOG 2>&1
+sleep 1
+mv ${TOOLS_DIR}portage.squashfs{,.bak} >> $LOG 2>&1
+
+${TOOLS_DIR}portage2squash >> $LOG 2>&1
+
+if [[ -f ${TOOLS_DIR}portage.squashfs ]]; then
+	rm ${TOOLS_DIR}portage.squashfs.bak >> $LOG 2>&1
+	rm $LOG
+else
+	mv ${TOOLS_DIR}portage.squashfs{.bak,} >> $LOG 2>&1
+fi
+mount $MOUNT_POINT >> $LOG 2>&1
+rm $LOCK >> $LOG 2>&1
