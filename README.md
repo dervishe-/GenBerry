@@ -3,6 +3,7 @@ Sort of Gentoo stage 4 for RaspberryPi with several tools.
 
 UPDATE:
 
+* 08/08/2016: Adding the portageupdate script
 * 30/07/2016: Enabling uart and serial console on rPi3 archive
 * 29/07/2016: Adding possibility to choose f2fs instead of ext4 for the root partition filesystem
 * 28/07/2016: The rPi 3 is supported
@@ -13,6 +14,7 @@ This collection of scripts:
 * imagebuilder
 * kernelbuilder
 * portage2squash
+* portageupdate
 will help you to build a gentoo stage4 for the raspberry Pi boards. I will try to maintain
 updated the initial image.
 
@@ -26,6 +28,7 @@ created .config file to customize your kernel.
 
 **portage2squash** will retrieve the portage-latest archive, verify its signature, make a squashfs archive with it.
 
+**portageupdate** will update the portage tree on the rPi as a cronjob every sunday at 23h59
 The system contain no swap space, /var/log and /tmp are tmpfs.
 
 ##You will need:

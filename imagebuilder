@@ -317,7 +317,7 @@ if [[ $RASP_TYPE -eq 1 && NO_BINHOST -eq 0 ]]; then
 	printResult $?
 fi
 echo -en "\t$HSTAR Copying the tools: ";
-cp -v ../{helpers,{image,kernel}builder,portage2squash} ${MOUNT_POINT}/root/tools/ >> $LOG 2>&1
+cp -v ../{helpers,{image,kernel}builder,portage{2squash,update}} ${MOUNT_POINT}/root/tools/ >> $LOG 2>&1
 printResult $?
 echo -en "\t$HSTAR Fixing the hostname to ${HOSTNAME}: ";
 echo "hostname=\"$HOSTNAME\"" > ${MOUNT_POINT}/etc/conf.d/hostname
@@ -356,7 +356,7 @@ cd - > /dev/null 2>&1
 
 echo -e "$HSTAR Cleaning all the stuffs (15/15): " #{{{
 echo -en "\t$HSTAR Fixing date for the first run: "
-find $MOUNT_POINT -exec touch -a -m -t 197001010001 {} \; >> $LOG 2>&1
+find $MOUNT_POINT -exec touch -a -m --date="2000-01-01 00:01:00" {} \; >> $LOG 2>&1
 printResult $?
 echo -en "\t$HSTAR Syncing sdcard: "
 sync && printResult 0
