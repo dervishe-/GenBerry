@@ -15,6 +15,7 @@ This collection of scripts:
 * kernelbuilder
 * portage2squash
 * portageupdate
+
 will help you to build a gentoo stage4 for the raspberry Pi boards. I will try to maintain
 updated the initial image.
 
@@ -42,7 +43,7 @@ The system contain no swap space, /var/log and /tmp are tmpfs.
 * squashfs-tools (to build the portge image)
 * And to be root or use sudo
 
-I you want the script to check the signature of the several files you will need to import some public keys:
+If you want the script to check the signature of the several files you will need to import some public keys:
 * Mine (1): https://keybase.io/dervishe/key.asc
 * Gentoo PK (3): https://www.gentoo.org/downloads/signatures/
 
@@ -82,7 +83,7 @@ Option's list:
 	-a : --without-binhost          Don't include the predefined binhost (Actually, the binhost is for armv6j made by NeddySeagoon)
 	-o : --overclock                Activate overclocking options
 	-f : --use-f2fs                 Use f2fs instead of ext4 as a root filesystem
-```
+
 
 if all goes, just unplug the sdcard and put it in your raspberry Pi.
 
