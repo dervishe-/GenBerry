@@ -3,6 +3,7 @@ Sort of Gentoo stage 4 for RaspberryPi with several tools.
 
 UPDATE:
 
+* 12/08/2016: Update base image for board 2 and 3 (with the latest fix for Off-Path TCP Exploits)
 * 08/08/2016: Adding the portageupdate script
 * 30/07/2016: Enabling uart and serial console on rPi3 archive
 * 29/07/2016: Adding possibility to choose f2fs instead of ext4 for the root partition filesystem
