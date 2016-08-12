@@ -26,11 +26,12 @@ additional drivers (fbtft), install them and do the same with a squashfs image o
 
 **kernelbuilder** will retrieve the kernel sources: https://github.com/raspberrypi/linux , the notro drivers
 for fbtft: https://github.com/notro/fbtft , compile them and install them. (You can also provide an already 
-created .config file to customize your kernel.
+created .config file to customize your kernel).
 
 **portage2squash** will retrieve the portage-latest archive, verify its signature, make a squashfs archive with it.
 
 **portageupdate** will update the portage tree on the rPi as a cronjob every sunday at 23h59
+
 The system contain no swap space, /var/log and /tmp are tmpfs.
 
 ##You will need:
