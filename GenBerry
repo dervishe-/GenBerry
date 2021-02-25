@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 
 #{{{Parameters
-AARCH="aarch64-unknown-linux-gnu"
+ARM_FLAVOUR_1="armv6j_hardfp"   # For Pi 1 in 32 bits mode
+ARM_FLAVOUR_3="armv7a_hardfp"   # For Pi 2, 3, 3+ in 32 bits mode
+ARM_FLAVOUR_4="arm64"           # For Pi 3 and 4 in 64 bits mode
+MODE=64
+KERNEL_CONFIG_1="bcmrpi_defconfig"
+KERNEL_CONFIG_2="bcm2709_defconfig"
 KERNEL_CONFIG_3="bcmrpi3_defconfig"
 KERNEL_CONFIG_4="bcm2711_defconfig"
 CARD="/dev/mmcblk0"
@@ -27,7 +32,7 @@ BRCM_FILE_3="bcm2710-rpi-3-b.dtb"
 BRCM_FILE_3P="bcm2710-rpi-3-b-plus.dtb"
 BRCM_FILE_4="bcm2711-rpi-4-b.dtb"
 KERNEL="https://github.com/raspberrypi/linux"
-STAGE3_URL="http://distfiles.gentoo.org/releases/arm64/autobuilds"
+STAGE3_URL="http://distfiles.gentoo.org/releases"
 PORTAGE_URL="http://distfiles.gentoo.org/snapshots"
 PORTAGE_FILE="portage-latest.tar.bz2"
 ROOT_PW_HASH="\$6\$xxPVR/Td5iP\$/7Asdgq0ux2sgNkklnndcG4g3493kUYfrrdenBXjxBxEsoLneJpDAwOyX/kkpFB4pU5dlhHEyN0SK4eh/WpmO0"
@@ -43,7 +48,9 @@ WORK_DIR=$(mktemp -d -t bldGenPiImg-XXXXXXXXXX)
 WORK_DIR_OLD=""
 NBR_CORE=$(($(grep -c processor < /proc/cpuinfo) + 1))
 BLOC_SIZE=512
-NBR_BLOCS=$((6 * 1024 * 1024 * 1024 / $BLOC_SIZE))
+NBR_BLOCS=$((7 * 1024 * 1024 * 1024 / BLOC_SIZE))
+MCFLAGS_1="-march=armv6j -mfpu=vfp -mfloat-abi=hard -O2"
+MCFLAGS_2="-march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard -O2"
 MCFLAGS_3="-march=armv8-a+crc -mtune=cortex-a53 -ftree-vectorize -O2 -pipe -fomit-frame-pointer"
 MCFLAGS_4="-march=armv8-a+crc+simd -mtune=cortex-a72 -ftree-vectorize -O2 -pipe -fomit-frame-pointer"
 NB_JOBS=4
@@ -110,6 +117,7 @@ function announce #{{{
     [[ -n $MY_CFG ]] && echo "* Kernel configuration file used: \e[1;33m$MY_CFG\e[0m"
     [[ "$MY_CFG_TXT" = true ]] && echo "* We use your own config.txt"
     echo -e "* RaspberryPi version: \e[1;33m$RPI_VERSION\e[0m"
+    echo -e "* Architecture: \e[1;33m$MYARCH\e[0m"
     echo -e "* Root filesystem: \e[1;33m$ROOT_FS\e[0m"
     echo -e "* Hostname: \e[1;33m$HN\e[0m"
     echo -e "* Timezone: \e[1;33m$TZ\e[0m"
@@ -131,25 +139,81 @@ function announce #{{{
 function flavoured_file #{{{
 {
     case $RPI_VERSION in
+        "1" )
+            [[ -n "$KERNEL_CONFIG" ]] || KERNEL_CONFIG=$KERNEL_CONFIG_1
+            ARM_FLAVOUR="$ARM_FLAVOUR_1"
+            BRCM_FILE=""
+            FW_BT_FILE=""
+            KERNEL_FILE="kernel.img"
+            MCFLAGS=$MCFLAGS_1
+            AARCH="armv6j-linux-gnueabihf" ;;
+        "2" )
+            [[ -n "$KERNEL_CONFIG" ]] || KERNEL_CONFIG=$KERNEL_CONFIG_2
+            BRCM_FILE=""
+            ARM_FLAVOUR="$ARM_FLAVOUR_3"
+            FW_BT_FILE=""
+            KERNEL_FILE="kernel7.img"
+            MCFLAGS=$MCFLAGS_2
+            AARCH="armv7a-linux-gnueabihf" ;;
         "3" )
-            [[ -n "$KERNEL_CONFIG" ]] || KERNEL_CONFIG=$KERNEL_CONFIG_3
+            [[ -n "$KERNEL_CONFIG" ]] || 
+                {
+                    [[ $MODE -eq 64 ]] && 
+                        KERNEL_CONFIG=$KERNEL_CONFIG_3 ||
+                        KERNEL_CONFIG=$KERNEL_CONFIG_2
+                }
             FW_WIFI_FILES=("${FW_WIFI_FILES_3[@]}")
             BRCM_FILE=$BRCM_FILE_3
             FW_BT_FILE=$FW_BT_FILE_3
-            MCFLAGS=$MCFLAGS_3;;
+            if [[ $MODE -eq 64 ]]; then 
+                ARM_FLAVOUR="$ARM_FLAVOUR_4"
+                KERNEL_FILE="kernel8.img"
+                MCFLAGS=$MCFLAGS_3 
+                AARCH="aarch64-linux-gnu"
+            else
+                ARM_FLAVOUR="$ARM_FLAVOUR_3"
+                KERNEL_FILE="kernel7.img"
+                MCFLAGS=$MCFLAGS_2 
+                AARCH="armv7a-linux-gnueabihf"
+            fi ;;
         "3P" )
-            [[ -n "$KERNEL_CONFIG" ]] || KERNEL_CONFIG=$KERNEL_CONFIG_3
+            [[ -n "$KERNEL_CONFIG" ]] || 
+                {
+                    [[ $MODE -eq 64 ]] && 
+                        KERNEL_CONFIG=$KERNEL_CONFIG_3 ||
+                        KERNEL_CONFIG=$KERNEL_CONFIG_2
+                }
             FW_WIFI_FILES=("${FW_WIFI_FILES_3P[@]}")
             BRCM_FILE=$BRCM_FILE_3P
             FW_BT_FILE=$FW_BT_FILE_3P
-            MCFLAGS=$MCFLAGS_3;;
+            if [[ $MODE -eq 64 ]]; then 
+                ARM_FLAVOUR="$ARM_FLAVOUR_4"
+                KERNEL_FILE="kernel8.img"
+                MCFLAGS=$MCFLAGS_3 
+                AARCH="aarch64-linux-gnu"
+            else
+                ARM_FLAVOUR="$ARM_FLAVOUR_3"
+                KERNEL_FILE="kernel7.img"
+                MCFLAGS=$MCFLAGS_2 
+                AARCH="armv7a-linux-gnueabihf"
+            fi ;;
         "4" )
             [[ -n "$KERNEL_CONFIG" ]] || KERNEL_CONFIG=$KERNEL_CONFIG_4
             BRCM_FILE=$BRCM_FILE_4
             FW_WIFI_FILES=("${FW_WIFI_FILES_4[@]}")
             FW_BT_FILE=$FW_BT_FILE_4
-            MCFLAGS=$MCFLAGS_4;;
+            if [[ $MODE -eq 64 ]]; then 
+                ARM_FLAVOUR="$ARM_FLAVOUR_4"
+                KERNEL_FILE="kernel8.img"
+                MCFLAGS=$MCFLAGS_4 
+                AARCH="aarch64-linux-gnu"
+            else
+                KERNEL_FILE="kernel7l.img"
+                MCFLAGS=$MCFLAGS_4 
+                AARCH="armv7a-linux-gnueabihf"
+            fi ;;
     esac
+    [[ $MODE -eq 64 ]] && MYARCH="arm64" || MYARCH="arm"
 } #}}}
 
 function test_requirements #{{{
@@ -173,7 +237,7 @@ function test_requirements #{{{
         printResult $? "${CARD} already mounted."
     fi
     echo -en "\t- Cross compilation tools: "
-    [[ $(gcc-config -l | grep -c "$AARCH") -eq 1 ]]
+    which "${AARCH}-gcc" >> "$LOG" 2>&1
     printResult $?  "You need to install the $AARCH compiler."
     echo -en "\t- Root permissions: "
     [[ $(id -u) -eq 0 ]]
@@ -273,17 +337,17 @@ function get_contents #{{{
     #}}}
     #{{{ Retrieving stage 3
     echo -en "\t- Stage 3: "
-    REMOTE="$STAGE3_URL/latest-stage3-arm64.txt"
-    LOCAL="$WORK_DIR/latest-stage3-arm64.txt"
+    REMOTE="$STAGE3_URL/$MYARCH/autobuilds/latest-stage3-$ARM_FLAVOUR.txt"
+    LOCAL="$WORK_DIR/latest-stage3-$MYARCH.txt"
     [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] || 
         printResult 1 "Retrieving last flavour id failed !"
-    FLAVOUR=$(grep -v "^#" < "$WORK_DIR/latest-stage3-arm64.txt" | cut -d " " -f 1)
-    REMOTE="$STAGE3_URL/$FLAVOUR.DIGESTS.asc"
+    FLAVOUR=$(grep -v "^#" < "$WORK_DIR/latest-stage3-$MYARCH.txt" | cut -d " " -f 1)
+    REMOTE="$STAGE3_URL/$MYARCH/autobuilds/$FLAVOUR.DIGESTS.asc"
     LOCAL="$WORK_DIR/${FLAVOUR#*/}.DIGESTS.asc"
     [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] || 
         printResult 1 "Retrieving stage 3 signature failed !"
     LOCAL="$WORK_DIR/${FLAVOUR#*/}"
-    REMOTE="$STAGE3_URL/$FLAVOUR"
+    REMOTE="$STAGE3_URL/$MYARCH/autobuilds/$FLAVOUR"
     if [[ -f "$LOCAL" ]]; then
         FILE_HASH=$(sha512sum "$LOCAL" | cut -d " " -f 1)
         if [[ $(grep -c "$FILE_HASH" < "$LOCAL.DIGESTS.asc") -eq 0 ]]; then
@@ -397,7 +461,7 @@ function build_kernel #{{{
             mv {../,}.config >> "$LOG" 2>&1 ||
                 printResult 1 "Unable to copy your config file."
         fi
-        ARCH=arm64 CROSS_COMPILE="$AARCH-" make "$KERNEL_CONFIG" >> "$LOG" 2>&1 ||
+        ARCH="$MYARCH" CROSS_COMPILE="$AARCH-" make "$KERNEL_CONFIG" >> "$LOG" 2>&1 ||
             printResult 1 "Kernel configuration failed !"
         if [[ "$KERNEL_CONFIG" != "olddefconfig" ]]; then
             sed -i '/^CONFIG_\(B43\|SSB_BLOCKIO\|BCMA_BLOCKIO\).*$/d' .config
@@ -407,7 +471,7 @@ function build_kernel #{{{
         fi
         echo -e "\e[1;32m[OK]\e[0m\e[37m"
         echo -ne "\t- Building: "
-        ARCH=arm64 CROSS_COMPILE="$AARCH-" make -j$NBR_CORE >> "$LOG" 2>&1
+        ARCH="$MYARCH" CROSS_COMPILE="$AARCH-" make -j$NBR_CORE >> "$LOG" 2>&1
         printResult $? "Kernel compilation failed !"
     )
 } #}}}
@@ -416,16 +480,20 @@ function populate #{{{
 {
     local KRN_RELEASE
     local RES
+    local BRD_DIR
+    [[ $MODE -eq 32 ]] && BRD_DIR="" || BRD_DIR="broadcom/"
     echo "* Populating the root: "
     # stage 3
     echo -ne "\t- Installing stage 3: "
-    FLAVOUR=$(grep -v "^#" < "$WORK_DIR/latest-stage3-arm64.txt" | cut -d " " -f 1)
+    FLAVOUR=$(grep -v "^#" < "$WORK_DIR/latest-stage3-$MYARCH.txt" | cut -d " " -f 1)
     tar xpf "$WORK_DIR/${FLAVOUR#*/}" --xattrs-include='*.*' \
                     --numeric-owner -C "$WORK_DIR/$ROOT" >> "$LOG" 2>&1
     printResult $? "Extracting stage 3 failed !"
     # Portage
     if [[ "$ADD_PORTAGE" = true ]]; then
         echo -ne "\t- Installing portage tree: "
+        mkdir -p "$WORK_DIR/$ROOT/var/db/repos/gentoo" ||
+            printResult 1 "Unable to create local gentoo repos !"
         tar xpf "$WORK_DIR/$PORTAGE_FILE" --strip-components=1 \
                     -C "$WORK_DIR/$ROOT/var/db/repos/gentoo" >> "$LOG" 2>&1
         printResult $? "Extracting portage failed !"
@@ -450,21 +518,22 @@ function populate #{{{
     cp "$WORK_DIR"/{"$FW_BT_FILE","$ROOT/lib/firmware/brcm/"} >> "$LOG" 2>&1
     printResult $? "Installing $FW_BT_FILE failed !"
     echo -ne "\t- Installing broadcom 64bit driver: "
-    mv "$WORK_DIR/$ROOT/boot/$BRCM_FILE"{,_32} >> "$LOG" 2>&1
-    cp "$WORK_DIR/"{"linux/arch/arm64/boot/dts/broadcom/$BRCM_FILE","$ROOT/boot"} \
+    [[ $MODE -eq 64 ]] &&
+        mv "$WORK_DIR/$ROOT/boot/$BRCM_FILE"{,_32} >> "$LOG" 2>&1
+    cp "$WORK_DIR/"{"linux/arch/$MYARCH/boot/dts/${BRD_DIR}$BRCM_FILE","$ROOT/boot"} \
                 >> "$LOG" 2>&1
     printResult $? "Installing brcm 64bit drivers failed !"
     #}}}
     #{{{ Kernel
     echo -ne "\t- Installing kernel: "
-    cp "$WORK_DIR/"{"linux/arch/arm64/boot/Image","$ROOT/boot/kernel8.img"} \
+    cp "$WORK_DIR/"{"linux/arch/$MYARCH/boot/Image","$ROOT/boot/$KERNEL_FILE"} \
                 >> "$LOG" 2>&1
     printResult $? "Installing kernel failed !"
     echo -ne "\t- Installing kernel modules: "
     (
         cd "$WORK_DIR/linux" >> "$LOG" 2>&1 ||
             printResult 1 "Unable to reach de kernel sources directory"
-        ARCH=arm64 CROSS_COMPILE="$AARCH-" make modules_install \
+        ARCH="$MYARCH" CROSS_COMPILE="$AARCH-" make modules_install \
                         INSTALL_MOD_PATH="$WORK_DIR/$ROOT" >> "$LOG" 2>&1
         printResult $? "Installing kernel modules failed !"
     )
@@ -489,7 +558,7 @@ function populate #{{{
         (
             cd "$WORK_DIR/linux" >> "$LOG" 2>&1 ||
                 printResult 1 "Unable to reach the kernel source directory"
-            ARCH=arm64 CROSS_COMPILE="$AARCH-" make distclean >> "$LOG" 2>&1
+            ARCH="$MYARCH" CROSS_COMPILE="$AARCH-" make distclean >> "$LOG" 2>&1
             cp -R ./* "$WORK_DIR/$ROOT/usr/src/$KRN_RELEASE/" >> "$LOG" 2>&1
             printResult $? "Copying sources failed !"
         )
@@ -616,35 +685,40 @@ Option's list:
 \t-b <type>\tType of the board:
 \t\t\t3 for raspberryPi (3 B)
 \t\t\t3P for raspberryPi (3 B+)
-\t\t\tDefault value is $RPI_VERSION\n
+\t\t\t4 for raspberryPi (4 B)
+\t\t\tActual value is $RPI_VERSION\n
 \t-m <dir>\tSet the mount point for the disk
-\t\t\tDefault value is a temporary directory\n
+\t\t\tActual value is a temporary directory\n
 \t-B <branch>\tInstall a specific kernel branch (from rPi kernel github repository)
-\t\t\tDefault value is the latest official branch\n
+\t\t\tActual value is the latest official branch\n
 \t-d <device>\tDevice to use for install:
-\t\t\tDefault value is $CARD\n
+\t\t\tActual value is $CARD\n
 \t-k <lang>\tLang for the keymaps
-\t\t\tDefault value is \"$KEYMAPS\"\n
+\t\t\tActual value is \"$KEYMAPS\"\n
 \t-c <file>\tUse your own kernel config file
 \t\t\tYou need to use the absolute path\n
-\t-H <hostname>\tFixe the hostname
-\t\t\tDefault value is \"$HN\"\n
-\t-t <timezone>\tFixe the timezone
-\t\t\tDefault value is \"$TZ\"\n
+\t-H <hostname>\tFix the hostname
+\t\t\tActual value is \"$HN\"\n
+\t-t <timezone>\tFix the timezone
+\t\t\tActual value is \"$TZ\"\n
 \t-f <filesystem>\tFilesystem for the root partition:
 \t\t\tf2fs, ext4
-\t\t\tDefault value is $ROOT_FS\n
+\t\t\tActual value is $ROOT_FS\n
 \t-a <actions>\tActions to perform \e[1;33m[Actually, for testing purpose]\e[1;0m
 \t\t\tYou can pick the actions in the following list:
 \t\t\t(all, retrieve_files, prepare_card, build_kernel, populate, tune)
-\t\t\tDefault value is \"all\"\n
+\t\t\tActual value is \"all\"\n
 \t-C <file>\tUse your own config.txt file
 \t\t\tYou need to use the absolute path\n
+\t-M <size>\tMode: 32 or 64 bits
+\t\t\tThis apply only on rPi 3, 3P and 4
+\t\t\tActual value: $MODE\n
 \t-s\t\tCopy the kernel sources on the card,
 \t\t\tBeware that this will run make distclean on the actual sources
-\t\t\tDefault value is \"$MOVE_KRN_SRC\"\n
+\t\t\tActual value is \"$MOVE_KRN_SRC\"\n
 \t-p\t\tCopy the portage tree,
-\t\t\tDefault value is \"$ADD_PORTAGE\"\n
+\t\t\tActual value is \"$ADD_PORTAGE\"\n
+\t-i\t\tBuild an image instead of writing directly on the media\n
 After the first boot, follow those steps:\n
 \t* busybox udhcpc -i eth0
 \t* rc-service busybox-ntpd restart
@@ -662,7 +736,7 @@ After the first boot, follow those steps:\n
 KRN_VERSION=$(git ls-remote "$KERNEL" | grep -v "pull\|patch" | grep head | 
             cut -d '/' -f 3 | grep "^rpi-[0-9].*y$" | sort -rV | head -n 1)
 
-while getopts "hb:m:B:d:k:c:H:t:f:a:C:spi" OPTION; do #{{{
+while getopts "hb:m:B:d:k:c:H:t:f:a:C:M:spi" OPTION; do #{{{
     case $OPTION in
         h ) show_help && exit 0 ;;
         b ) RPI_VERSION="$OPTARG" ;;
@@ -695,6 +769,12 @@ while getopts "hb:m:B:d:k:c:H:t:f:a:C:spi" OPTION; do #{{{
                 }
             MY_CFG_TXT=true
             CONFIG_FILE="$OPTARG" ;;
+        M ) [[ $OPTARG -ne 32 && $OPTARG -ne 64 ]] &&
+                {
+                    echo "-S allowed values are: 32 and 64."
+                    exit 1
+                }
+            MODE=$OPTARG ;;
         s ) MOVE_KRN_SRC=true ;;
         p ) ADD_PORTAGE=true ;;
         i ) USE_IMG=true
@@ -706,8 +786,9 @@ done #}}}
 LOG="$WORK_DIR"/builder.log
 
 [[ "$ROOT_FS" = "f2fs" ]] && 
-    FORMAT_ROOT="$FORMAT_ROOT_F2FS" ||  
+    FORMAT_ROOT="$FORMAT_ROOT_F2FS" || 
     FORMAT_ROOT="$FORMAT_ROOT_EXT4"
+
 $CHOICE_MADE || fix_actions all
 announce
 flavoured_file
