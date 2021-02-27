@@ -1,5 +1,7 @@
 # GenBerry
 
+![logo GenBerry](./GenBerry.png)
+
 ## Purpose
 
 GenBerry is a shell script which provide a minimal gentoo image for
