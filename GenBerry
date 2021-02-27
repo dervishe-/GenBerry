@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 #
+# GenBerry
+#
+# Author: Alexandre Keledjian <dervishe@protonmail.ch>
+# vim: foldmarker={{{,}}} ts=4
+# license: GPL v3.0
+#
 
 #{{{Parameters
 ARM_FLAVOUR_1="armv6j_hardfp"   # For Pi 1 in 32 bits mode
@@ -323,6 +329,7 @@ function get_contents #{{{
     local FLAVOUR
     local REMOTE
     local LOCAL
+    local TARGET
     local FILE_HASH
     echo "* Getting the contents:"
     #{{{ Retrieving firmware
@@ -438,7 +445,7 @@ function get_contents #{{{
             fi
         else
             if ! [[ -f "$WORK_DIR/${FW_WIFI_FILES[0]}" ]]; then
-                local TARGET
+                LOCAL="$WORK_DIR/$FW_WIFI_ARCH_DEB_FILE"
                 ar --output "$WORK_DIR" x "$LOCAL" data.tar.xz >> "$LOG" 2>&1 ||
                     printResult 1 "Extracting archives from deb file failed !"
                 TARGET="./lib/firmware/brcm/${FW_WIFI_FILES[0]}"
@@ -449,7 +456,7 @@ function get_contents #{{{
         fi
         if ! [[ -f "$WORK_DIR/${FW_WIFI_FILES[1]}" ]] || 
                     ! [[ -f "$WORK_DIR/${FW_WIFI_FILES[2]}" ]]; then
-            local TARGET
+            LOCAL="$WORK_DIR/$FW_WIFI_ARCH_DEB_FILE"
             ar --output "$WORK_DIR" x "$LOCAL" data.tar.xz >> "$LOG" 2>&1 ||
                 printResult 1 "Extracting archives from deb file failed !"
             TARGET="./lib/firmware/brcm/${FW_WIFI_FILES[1]}"
@@ -548,7 +555,7 @@ function populate #{{{
             [[ "$RES" -eq 0 ]] || 
                 printResult 1 "Installing $FILE failed !"
         done
-        printResut 1 ""
+        printResult 0 ""
         echo -ne "\t- Adding bluetooth firmware: "
         cp "$WORK_DIR"/{"$FW_BT_FILE","$ROOT/lib/firmware/brcm/"} >> "$LOG" 2>&1
         printResult $? "Installing $FW_BT_FILE failed !"
