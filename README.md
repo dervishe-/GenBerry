@@ -168,9 +168,13 @@ a keyboard to finish:
 busybox udhcpc -i eth0
 rc-service busybox-ntpd restart
 emerge --sync
-emerge -uD --newuse @world
-emerge --depclean
-emerge dhcpcd
+emerge -auD --newuse @world
+emerge -av --depclean
+emerge -av dhcpcd
+# If you want to use Wifi
+emerge -av wpa_supplicant
+rc-update add wpa_supplicant default
+# reboot
 shutdown -r now
 ```
 Then, you just will have to customize your new system :)
@@ -186,3 +190,4 @@ Then, you just will have to customize your new system :)
 * For rPi4 activate USB attached SCSI
 * sshd ativated and root allowed to login
 * Allow to choose the password
+* Check the available space for building the image
