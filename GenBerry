@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#
 
 #{{{Parameters
 ARM_FLAVOUR_1="armv6j_hardfp"   # For Pi 1 in 32 bits mode
@@ -9,6 +10,9 @@ KERNEL_CONFIG_1="bcmrpi_defconfig"
 KERNEL_CONFIG_2="bcm2709_defconfig"
 KERNEL_CONFIG_3="bcmrpi3_defconfig"
 KERNEL_CONFIG_4="bcm2711_defconfig"
+FILESET_MIN=("COPYING.linux" "LICENCE.broadcom" "bootcode.bin")
+FILESET_BOOT_3=("fixup.dat" "fixup_cd.dat" "fixup_db.dat" "fixup_x.dat" "start.elf" "start_cd.elf" "start_db.elf" "start_x.elf")
+FILESET_BOOT_4=("fixup4.dat" "fixup4cd.dat" "fixup4db.dat" "fixup4x.dat" "start4.elf" "start4cd.elf" "start4db.elf" "start4x.elf")
 CARD="/dev/mmcblk0"
 IMG_PREFIX="GenBerry"
 ROOT="root"
@@ -28,6 +32,8 @@ FW_BT_URL="https://raw.githubusercontent.com/RPi-Distro/bluez-firmware/master/br
 FW_BT_FILE_3="BCM43430A1.hcd"
 FW_BT_FILE_3P="BCM4345C0.hcd"
 FW_BT_FILE_4="BCM-0bb4-0306.hcd"
+BRCM_FILE_1="bcm2708-rpi-b.dtb"
+BRCM_FILE_2="bcm2709-rpi-2-b.dtb"
 BRCM_FILE_3="bcm2710-rpi-3-b.dtb"
 BRCM_FILE_3P="bcm2710-rpi-3-b-plus.dtb"
 BRCM_FILE_4="bcm2711-rpi-4-b.dtb"
@@ -37,13 +43,13 @@ PORTAGE_URL="http://distfiles.gentoo.org/snapshots"
 PORTAGE_FILE="portage-latest.tar.bz2"
 ROOT_PW_HASH="\$6\$xxPVR/Td5iP\$/7Asdgq0ux2sgNkklnndcG4g3493kUYfrrdenBXjxBxEsoLneJpDAwOyX/kkpFB4pU5dlhHEyN0SK4eh/WpmO0"
 ROOT_PW="raspberry"
-CONFIG_FILE="disable_overscan=1\ndtoverlay=vc4-fkms-v3d\nhdmi_drive=2\ndtparam=audio=on\ndtparam=krnbt=on\ngpu_mem=16\narm_64bit=1"
+CONFIG_FILE="disable_overscan=1\ndtoverlay=vc4-fkms-v3d\nhdmi_drive=2\ndtparam=audio=on\ndtparam=krnbt=on\ngpu_mem=16"
 PARTITION_SCHEME="unit: sectors\n\nstart=2048, size=262144, type=c, bootable\nstart=264192, size=4194304, type=82\nstart=4458496, type=83"
 FORMAT_ROOT_EXT4="mkfs.ext4 -F -i 8192"
 FORMAT_ROOT_F2FS="mkfs.f2fs -f -O extra_attr,inode_checksum,sb_checksum"
 ROOT_FS="ext4"
 DEPENDS=("git" "sfdisk" "losetup" "blkid" "wget" "gpg" "partprobe" "sync")
-RPI_VERSION="3"
+RPI_VERSION="4"
 WORK_DIR=$(mktemp -d -t bldGenPiImg-XXXXXXXXXX)
 WORK_DIR_OLD=""
 NBR_CORE=$(($(grep -c processor < /proc/cpuinfo) + 1))
@@ -138,20 +144,21 @@ function announce #{{{
 
 function flavoured_file #{{{
 {
+    FILESET_BOOT=("${FILESET_BOOT_3[@]}")
     case $RPI_VERSION in
         "1" )
             [[ -n "$KERNEL_CONFIG" ]] || KERNEL_CONFIG=$KERNEL_CONFIG_1
+            MODE=32
             ARM_FLAVOUR="$ARM_FLAVOUR_1"
-            BRCM_FILE=""
-            FW_BT_FILE=""
+            BRCM_FILE=$BRCM_FILE_1
             KERNEL_FILE="kernel.img"
             MCFLAGS=$MCFLAGS_1
             AARCH="armv6j-linux-gnueabihf" ;;
         "2" )
             [[ -n "$KERNEL_CONFIG" ]] || KERNEL_CONFIG=$KERNEL_CONFIG_2
-            BRCM_FILE=""
+            MODE=32
             ARM_FLAVOUR="$ARM_FLAVOUR_3"
-            FW_BT_FILE=""
+            BRCM_FILE=$BRCM_FILE_2
             KERNEL_FILE="kernel7.img"
             MCFLAGS=$MCFLAGS_2
             AARCH="armv7a-linux-gnueabihf" ;;
@@ -199,6 +206,7 @@ function flavoured_file #{{{
             fi ;;
         "4" )
             [[ -n "$KERNEL_CONFIG" ]] || KERNEL_CONFIG=$KERNEL_CONFIG_4
+            FILESET_BOOT=("${FILESET_BOOT_4[@]}")
             BRCM_FILE=$BRCM_FILE_4
             FW_WIFI_FILES=("${FW_WIFI_FILES_4[@]}")
             FW_BT_FILE=$FW_BT_FILE_4
@@ -208,6 +216,7 @@ function flavoured_file #{{{
                 MCFLAGS=$MCFLAGS_4 
                 AARCH="aarch64-linux-gnu"
             else
+                ARM_FLAVOUR="$ARM_FLAVOUR_3"
                 KERNEL_FILE="kernel7l.img"
                 MCFLAGS=$MCFLAGS_4 
                 AARCH="armv7a-linux-gnueabihf"
@@ -333,7 +342,7 @@ function get_contents #{{{
                 printResult 1 "Getting firmware failed !"
         )
     fi
-    echo -e "\e[1;32m[OK]\e[0m\e[37m"
+    printResult 0 ""
     #}}}
     #{{{ Retrieving stage 3
     echo -en "\t- Stage 3: "
@@ -365,7 +374,7 @@ function get_contents #{{{
         [[ $(grep -c "$FILE_HASH" < "$LOCAL.DIGESTS.asc") -gt 0 ]] ||
             printResult 1 "The file sha512sum don't match."
     fi
-    echo -e "\e[1;32m[OK]\e[0m\e[37m"
+    printResult 0 ""
     #}}}
     #{{{ Retrieving portage tree
     if [[ "$ADD_PORTAGE" = true ]]; then
@@ -387,7 +396,7 @@ function get_contents #{{{
             [[ $(gpg --verify "$LOCAL.asc" >> "$LOG" 2>&1) -eq 0 ]] ||
                 printResult 1 "portage signature don't match !"
         fi
-        echo -e "\e[1;32m[OK]\e[0m\e[37m"
+        printResult 0 ""
     fi
     #}}}
     #{{{ Retrieving the kernel
@@ -409,44 +418,58 @@ function get_contents #{{{
                 printResult 1 "Getting kernel version $KRN_VERSION failed !"
         )
     fi
-    echo -e "\e[1;32m[OK]\e[0m\e[37m"
+    printResult 0 ""
     #}}}
     #{{{ Retrieving firmwares
-    echo -en "\t- Wifi firmware: "
-    LOCAL="$WORK_DIR/${FW_WIFI_FILES[0]}"
-    REMOTE="$FW_WIFI_URL/${FW_WIFI_FILES[0]}"
-    if ! [[ -f "$LOCAL" ]]; then
-        [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
-            printResult 1 "Retrieving ${FW_WIFI_FILES[0]} failed !"
-    fi
-    LOCAL="$WORK_DIR/$FW_WIFI_ARCH_DEB_FILE"
-    REMOTE="$FW_WIFI_ARCH_DEB_URL/$FW_WIFI_ARCH_DEB_FILE"
-    if ! [[ -f "$LOCAL" ]]; then
-        [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
-            printResult 1 "Retrieving $FW_WIFI_ARCH_DEB_FILE failed !"
-    fi
-    if ! [[ -f "$WORK_DIR/${FW_WIFI_FILES[1]}" ]] || 
-                ! [[ -f "$WORK_DIR/${FW_WIFI_FILES[2]}" ]]; then
-        local TARGET
-        ar --output "$WORK_DIR" x "$LOCAL" data.tar.xz >> "$LOG" 2>&1 ||
-            printResult 1 "Extracting archives from deb file failed !"
-        TARGET="./lib/firmware/brcm/${FW_WIFI_FILES[1]}"
-        tar xJf "$WORK_DIR/data.tar.xz" --strip-components 4 -C "$WORK_DIR" "$TARGET" \
-            2>> "$LOG" || printResult 1 "Extracting ${FW_WIFI_FILES[1]} failed !"
-        TARGET="./lib/firmware/brcm/${FW_WIFI_FILES[2]}"
-        tar xJf "$WORK_DIR/data.tar.xz" --strip-components 4 -C "$WORK_DIR" "$TARGET" \
-                2>> "$LOG" || printResult 1 "Extracting ${FW_WIFI_FILES[2]} failed !"
-        rm "$WORK_DIR/data.tar.xz"
-    fi
-    echo -e "\e[1;32m[OK]\e[0m\e[37m"
-    echo -en "\t- Bluetooth firmware: "
-    LOCAL="$WORK_DIR/$FW_BT_FILE"
-    REMOTE="$FW_BT_URL/$FW_BT_FILE"
-    if ! [[ -f "$LOCAL" ]]; then
-        [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
-            printResult 1 "Retrieving $FW_BT_FILE failed !"
+    if [[ -n "${FW_WIFI_FILES[0]}" ]]; then
+        echo -en "\t- Wifi firmware: "
+        LOCAL="$WORK_DIR/$FW_WIFI_ARCH_DEB_FILE"
+        REMOTE="$FW_WIFI_ARCH_DEB_URL/$FW_WIFI_ARCH_DEB_FILE"
+        if ! [[ -f "$LOCAL" ]]; then
+            [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
+                printResult 1 "Retrieving $FW_WIFI_ARCH_DEB_FILE failed !"
         fi
-    echo -e "\e[1;32m[OK]\e[0m\e[37m"
+        if ! [[ "$RPI_VERSION" = "4" ]]; then
+            LOCAL="$WORK_DIR/${FW_WIFI_FILES[0]}"
+            REMOTE="$FW_WIFI_URL/${FW_WIFI_FILES[0]}"
+            if ! [[ -f "$LOCAL" ]]; then
+                [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
+                    printResult 1 "Retrieving ${FW_WIFI_FILES[0]} failed !"
+            fi
+        else
+            if ! [[ -f "$WORK_DIR/${FW_WIFI_FILES[0]}" ]]; then
+                local TARGET
+                ar --output "$WORK_DIR" x "$LOCAL" data.tar.xz >> "$LOG" 2>&1 ||
+                    printResult 1 "Extracting archives from deb file failed !"
+                TARGET="./lib/firmware/brcm/${FW_WIFI_FILES[0]}"
+                tar xJf "$WORK_DIR/data.tar.xz" --strip-components 4 -C "$WORK_DIR" "$TARGET" \
+                    2>> "$LOG" || printResult 1 "Extracting ${FW_WIFI_FILES[0]} failed !"
+                rm "$WORK_DIR/data.tar.xz"
+            fi
+        fi
+        if ! [[ -f "$WORK_DIR/${FW_WIFI_FILES[1]}" ]] || 
+                    ! [[ -f "$WORK_DIR/${FW_WIFI_FILES[2]}" ]]; then
+            local TARGET
+            ar --output "$WORK_DIR" x "$LOCAL" data.tar.xz >> "$LOG" 2>&1 ||
+                printResult 1 "Extracting archives from deb file failed !"
+            TARGET="./lib/firmware/brcm/${FW_WIFI_FILES[1]}"
+            tar xJf "$WORK_DIR/data.tar.xz" --strip-components 4 -C "$WORK_DIR" "$TARGET" \
+                2>> "$LOG" || printResult 1 "Extracting ${FW_WIFI_FILES[1]} failed !"
+            TARGET="./lib/firmware/brcm/${FW_WIFI_FILES[2]}"
+            tar xJf "$WORK_DIR/data.tar.xz" --strip-components 4 -C "$WORK_DIR" "$TARGET" \
+                    2>> "$LOG" || printResult 1 "Extracting ${FW_WIFI_FILES[2]} failed !"
+            rm "$WORK_DIR/data.tar.xz"
+        fi
+        printResult 0 ""
+        echo -en "\t- Bluetooth firmware: "
+        LOCAL="$WORK_DIR/$FW_BT_FILE"
+        REMOTE="$FW_BT_URL/$FW_BT_FILE"
+        if ! [[ -f "$LOCAL" ]]; then
+            [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
+                printResult 1 "Retrieving $FW_BT_FILE failed !"
+        fi
+        printResult 0 ""
+    fi
     #}}}
 } #}}}
 
@@ -469,9 +492,11 @@ function build_kernel #{{{
             sed -i -E 's/^(CONFIG_CPU_FREQ_DEFAULT_GOV[A-Z_]*)=.*$/# \1 is not set/g' .config
             sed -i -E "s/^# (CONFIG_CPU_FREQ_DEFAULT_GOV_$DEFAULT_POWER_GOV) is not set/\1=y/" .config
         fi
-        echo -e "\e[1;32m[OK]\e[0m\e[37m"
+        printResult 0 ""
         echo -ne "\t- Building: "
-        ARCH="$MYARCH" CROSS_COMPILE="$AARCH-" make -j$NBR_CORE >> "$LOG" 2>&1
+        IMG="zImage"
+        [[ $MODE -eq 64 ]] && IMG="Image"
+        ARCH="$MYARCH" CROSS_COMPILE="$AARCH-" make -j$NBR_CORE "$IMG" modules dtbs >> "$LOG" 2>&1
         printResult $? "Kernel compilation failed !"
     )
 } #}}}
@@ -500,29 +525,38 @@ function populate #{{{
     fi
     #{{{ Firmwares
     echo -ne "\t- Installing firmwares: "
-    cp -r "$WORK_DIR"/{firmware/boot/*,"$ROOT"/boot} >> "$LOG" 2>&1
-    printResult $? "Installing firmware failed !"
-    echo -ne "\t- Adding wifi firmware: "
-    [[ -d "$WORK_DIR/$ROOT/lib/firmware/brcm" ]] || 
-        {
-            mkdir -p "$WORK_DIR/$ROOT/lib/firmware/brcm" ||
-                printResult 1 "Unable to make the directory"
-        }
-    for FILE in "${FW_WIFI_FILES[@]}"; do
-        RES=$(cp "$WORK_DIR"/{"$FILE","$ROOT/lib/firmware/brcm/"} >> "$LOG" 2>&1)
-        [[ "$RES" -eq 0 ]] || 
+    cp -r "$WORK_DIR"/{firmware/boot/overlays,"$ROOT"/boot/} >> "$LOG" 2>&1 ||
+        printResult 1 "Installing overlays failed !"
+    for FILE in "${FILESET_MIN[@]}"; do
+        cp -r "$WORK_DIR"/{firmware/boot/"$FILE","$ROOT"/boot/} >> "$LOG" 2>&1 ||
             printResult 1 "Installing $FILE failed !"
     done
-    echo -e "\e[1;32m[OK]\e[0m\e[37m"
-    echo -ne "\t- Adding bluetooth firmware: "
-    cp "$WORK_DIR"/{"$FW_BT_FILE","$ROOT/lib/firmware/brcm/"} >> "$LOG" 2>&1
-    printResult $? "Installing $FW_BT_FILE failed !"
-    echo -ne "\t- Installing broadcom 64bit driver: "
-    [[ $MODE -eq 64 ]] &&
-        mv "$WORK_DIR/$ROOT/boot/$BRCM_FILE"{,_32} >> "$LOG" 2>&1
+    for FILE in "${FILESET_BOOT[@]}"; do
+        cp -r "$WORK_DIR"/{firmware/boot/"$FILE","$ROOT"/boot/} >> "$LOG" 2>&1 ||
+            printResult 1 "Installing $FILE failed !"
+    done
+    printResult 0
+    if [[ -n "${FW_WIFI_FILES[0]}" ]]; then
+        echo -ne "\t- Adding wifi firmware: "
+        [[ -d "$WORK_DIR/$ROOT/lib/firmware/brcm" ]] || 
+            {
+                mkdir -p "$WORK_DIR/$ROOT/lib/firmware/brcm" ||
+                    printResult 1 "Unable to make the directory"
+            }
+        for FILE in "${FW_WIFI_FILES[@]}"; do
+            RES=$(cp "$WORK_DIR"/{"$FILE","$ROOT/lib/firmware/brcm/"} >> "$LOG" 2>&1)
+            [[ "$RES" -eq 0 ]] || 
+                printResult 1 "Installing $FILE failed !"
+        done
+        printResut 1 ""
+        echo -ne "\t- Adding bluetooth firmware: "
+        cp "$WORK_DIR"/{"$FW_BT_FILE","$ROOT/lib/firmware/brcm/"} >> "$LOG" 2>&1
+        printResult $? "Installing $FW_BT_FILE failed !"
+    fi
+    echo -ne "\t- Installing broadcom driver: "
     cp "$WORK_DIR/"{"linux/arch/$MYARCH/boot/dts/${BRD_DIR}$BRCM_FILE","$ROOT/boot"} \
                 >> "$LOG" 2>&1
-    printResult $? "Installing brcm 64bit drivers failed !"
+    printResult $? "Installing brcm drivers failed !"
     #}}}
     #{{{ Kernel
     echo -ne "\t- Installing kernel: "
@@ -601,6 +635,7 @@ function tune #{{{
         cp "$CONFIG_FILE" "$WORK_DIR/$ROOT/boot/config.txt" 2>> "$LOG"
         printResult $? "Config file installing failed !"
     else
+        [[ $MODE -eq 64 ]] && CONFIG_FILE="${CONFIG_FILE}\narm_64bit=1\n"
         echo -e "$CONFIG_FILE" > "$WORK_DIR/$ROOT/boot/config.txt" 2>> "$LOG"
         printResult $? "Config file installing failed !"
     fi
@@ -683,9 +718,11 @@ function show_help #{{{
 Option's list:
 \t-h\t\tDisplay this help message\n
 \t-b <type>\tType of the board:
-\t\t\t3 for raspberryPi (3 B)
-\t\t\t3P for raspberryPi (3 B+)
-\t\t\t4 for raspberryPi (4 B)
+\t\t\t1 for raspberryPi 1 family
+\t\t\t2 for raspberryPi 2 family
+\t\t\t3 for raspberryPi 3B
+\t\t\t3P for raspberryPi 3B+
+\t\t\t4 for raspberryPi 4B
 \t\t\tActual value is $RPI_VERSION\n
 \t-m <dir>\tSet the mount point for the disk
 \t\t\tActual value is a temporary directory\n
@@ -790,8 +827,8 @@ LOG="$WORK_DIR"/builder.log
     FORMAT_ROOT="$FORMAT_ROOT_EXT4"
 
 $CHOICE_MADE || fix_actions all
-announce
 flavoured_file
+announce
 test_requirements
 $GET_CONTENT && get_contents
 $BUILDK && build_kernel
