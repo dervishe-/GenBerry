@@ -17,6 +17,8 @@ The images are build following those tutorials:
 * https://wiki.gentoo.org/wiki/Raspberry_Pi
 * https://wiki.gentoo.org/wiki/Raspberry_Pi_3_64_bit_Install
 * https://wiki.gentoo.org/wiki/Raspberry_Pi4_64_Bit_Install
+* https://www.raspberrypi.org/documentation/linux/kernel/building.md
+* https://www.raspberrypi.org/documentation/configuration/config-txt/boot.md
 
 ## What the script actually do ?
 

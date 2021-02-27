@@ -8,66 +8,7 @@
 #
 
 #{{{Parameters
-ARM_FLAVOUR_1="armv6j_hardfp"   # For Pi 1 in 32 bits mode
-ARM_FLAVOUR_3="armv7a_hardfp"   # For Pi 2, 3, 3+ in 32 bits mode
-ARM_FLAVOUR_4="arm64"           # For Pi 3 and 4 in 64 bits mode
-MODE=64
-KERNEL_CONFIG_1="bcmrpi_defconfig"
-KERNEL_CONFIG_2="bcm2709_defconfig"
-KERNEL_CONFIG_3="bcmrpi3_defconfig"
-KERNEL_CONFIG_4="bcm2711_defconfig"
-FILESET_MIN=("COPYING.linux" "LICENCE.broadcom" "bootcode.bin")
-FILESET_BOOT_3=("fixup.dat" "fixup_cd.dat" "fixup_db.dat" "fixup_x.dat" "start.elf" "start_cd.elf" "start_db.elf" "start_x.elf")
-FILESET_BOOT_4=("fixup4.dat" "fixup4cd.dat" "fixup4db.dat" "fixup4x.dat" "start4.elf" "start4cd.elf" "start4db.elf" "start4x.elf")
-CARD="/dev/mmcblk0"
-IMG_PREFIX="GenBerry"
-ROOT="root"
-TZ="Europe/Paris"
-KEYMAPS="fr"
-HN="gibolin"
-GLRE_KEY="13EBBDBEDE7A12775DFDB1BABB572E0E2D182910"
-KEY_SERVER="hkps://keys.gentoo.org"
-FW_URL="https://github.com/raspberrypi/firmware"
-FW_WIFI_URL="https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/brcm"
-FW_WIFI_ARCH_DEB_URL="http://archive.raspberrypi.org/debian/pool/main/f/firmware-nonfree"
-FW_WIFI_ARCH_DEB_FILE="firmware-brcm80211_20190114-1+rpt3_all.deb"
-FW_WIFI_FILES_3=("brcmfmac43430-sdio.raspberrypi,3-model-b.txt" "brcmfmac43430-sdio.bin" "brcmfmac43430-sdio.clm_blob")
-FW_WIFI_FILES_3P=("brcmfmac43455-sdio.raspberrypi,3-model-b-plus.txt" "brcmfmac43455-sdio.bin" "brcmfmac43455-sdio.clm_blob")
-FW_WIFI_FILES_4=("brcmfmac43455-sdio.txt" "brcmfmac43455-sdio.bin" "brcmfmac43455-sdio.clm_blob")
-FW_BT_URL="https://raw.githubusercontent.com/RPi-Distro/bluez-firmware/master/broadcom/"
-FW_BT_FILE_3="BCM43430A1.hcd"
-FW_BT_FILE_3P="BCM4345C0.hcd"
-FW_BT_FILE_4="BCM-0bb4-0306.hcd"
-BRCM_FILE_1="bcm2708-rpi-b.dtb"
-BRCM_FILE_2="bcm2709-rpi-2-b.dtb"
-BRCM_FILE_3="bcm2710-rpi-3-b.dtb"
-BRCM_FILE_3P="bcm2710-rpi-3-b-plus.dtb"
-BRCM_FILE_4="bcm2711-rpi-4-b.dtb"
-KERNEL="https://github.com/raspberrypi/linux"
-STAGE3_URL="http://distfiles.gentoo.org/releases"
-PORTAGE_URL="http://distfiles.gentoo.org/snapshots"
-PORTAGE_FILE="portage-latest.tar.bz2"
-ROOT_PW_HASH="\$6\$xxPVR/Td5iP\$/7Asdgq0ux2sgNkklnndcG4g3493kUYfrrdenBXjxBxEsoLneJpDAwOyX/kkpFB4pU5dlhHEyN0SK4eh/WpmO0"
-ROOT_PW="raspberry"
-CONFIG_FILE="disable_overscan=1\ndtoverlay=vc4-fkms-v3d\nhdmi_drive=2\ndtparam=audio=on\ndtparam=krnbt=on\ngpu_mem=16"
-PARTITION_SCHEME="unit: sectors\n\nstart=2048, size=262144, type=c, bootable\nstart=264192, size=4194304, type=82\nstart=4458496, type=83"
-FORMAT_ROOT_EXT4="mkfs.ext4 -F -i 8192"
-FORMAT_ROOT_F2FS="mkfs.f2fs -f -O extra_attr,inode_checksum,sb_checksum"
-ROOT_FS="ext4"
-DEPENDS=("git" "sfdisk" "losetup" "blkid" "wget" "gpg" "partprobe" "sync")
-RPI_VERSION="4"
-WORK_DIR=$(mktemp -d -t bldGenPiImg-XXXXXXXXXX)
-WORK_DIR_OLD=""
-NBR_CORE=$(($(grep -c processor < /proc/cpuinfo) + 1))
-BLOC_SIZE=512
-NBR_BLOCS=$((7 * 1024 * 1024 * 1024 / BLOC_SIZE))
-MCFLAGS_1="-march=armv6j -mfpu=vfp -mfloat-abi=hard -O2"
-MCFLAGS_2="-march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard -O2"
-MCFLAGS_3="-march=armv8-a+crc -mtune=cortex-a53 -ftree-vectorize -O2 -pipe -fomit-frame-pointer"
-MCFLAGS_4="-march=armv8-a+crc+simd -mtune=cortex-a72 -ftree-vectorize -O2 -pipe -fomit-frame-pointer"
-NB_JOBS=4
-DEFAULT_POWER_GOV="ONDEMAND"
-
+CONFIG_FILE="./GenBerry.cfg"
 CHOICE_MADE=false
 GET_CONTENT=false
 PREPARE=false
@@ -78,6 +19,8 @@ MOVE_KRN_SRC=false
 ADD_PORTAGE=false
 MY_CFG_TXT=false
 USE_IMG=false
+
+source "$CONFIG_FILE"
 #}}}
 
 function fix_actions #{{{
