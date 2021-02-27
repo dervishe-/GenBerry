@@ -3,8 +3,10 @@
 # GenBerry
 #
 # Author: Alexandre Keledjian <dervishe@protonmail.ch>
-# vim: foldmarker={{{,}}} ts=4
 # license: GPL v3.0
+#
+# vim: foldmarker={{{,}}} ts=4
+# shellcheck source=./GenBerry.cfg
 #
 
 #{{{Parameters
@@ -267,15 +269,8 @@ function mount_root #{{{
     printResult $? "Mounting the boot partition failed !"
 } #}}}
 
-function get_contents #{{{
+function get_firmwares #{{{
 {
-    local FLAVOUR
-    local REMOTE
-    local LOCAL
-    local TARGET
-    local FILE_HASH
-    echo "* Getting the contents:"
-    #{{{ Retrieving firmware
     echo -en "\t- Firmware: "
     if [[ -d "$WORK_DIR/firmware" ]]; then
         (
@@ -293,8 +288,14 @@ function get_contents #{{{
         )
     fi
     printResult 0 ""
-    #}}}
-    #{{{ Retrieving stage 3
+} #}}}
+
+function get_stage3 #{{{
+{
+    local FLAVOUR
+    local REMOTE
+    local LOCAL
+    local FILE_HASH
     echo -en "\t- Stage 3: "
     REMOTE="$STAGE3_URL/$MYARCH/autobuilds/latest-stage3-$ARM_FLAVOUR.txt"
     LOCAL="$WORK_DIR/latest-stage3-$MYARCH.txt"
@@ -325,31 +326,89 @@ function get_contents #{{{
             printResult 1 "The file sha512sum don't match."
     fi
     printResult 0 ""
-    #}}}
-    #{{{ Retrieving portage tree
-    if [[ "$ADD_PORTAGE" = true ]]; then
-        echo -en "\t- Portage: "
-        LOCAL="$WORK_DIR/$PORTAGE_FILE"
-        REMOTE="$PORTAGE_URL/$PORTAGE_FILE"
-        [[ $(wget "$REMOTE.gpgsig" -O "$LOCAL.asc" >> "$LOG" 2>&1) -eq 0 ]] ||
-            printResult 1 "Retrieving portage tree signature failed !"
-        if [[ -f "$LOCAL" ]]; then
-            if [[ $(gpg --verify "$LOCAL.asc" >> "$LOG" 2>&1) -gt 0 ]]; then
-                [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
-                    printResult 1 "Retrieving portage tree failed !"
-                [[ $(gpg --verify "$LOCAL.asc" >> "$LOG" 2>&1) -eq 0 ]] ||
-                    printResult 1 "portage signature don't match !"
-            fi
-        else
+} #}}}
+
+function get_wifi_bt_fw #{{{
+{
+    local REMOTE
+    local LOCAL
+    local TARGET
+    echo -en "\t- Wifi firmware: "
+    LOCAL="$WORK_DIR/$FW_WIFI_ARCH_DEB_FILE"
+    REMOTE="$FW_WIFI_ARCH_DEB_URL/$FW_WIFI_ARCH_DEB_FILE"
+    if ! [[ -f "$LOCAL" ]]; then
+        [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
+            printResult 1 "Retrieving $FW_WIFI_ARCH_DEB_FILE failed !"
+    fi
+    if ! [[ "$RPI_VERSION" = "4" ]]; then
+        LOCAL="$WORK_DIR/${FW_WIFI_FILES[0]}"
+        REMOTE="$FW_WIFI_URL/${FW_WIFI_FILES[0]}"
+        if ! [[ -f "$LOCAL" ]]; then
+            [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
+                printResult 1 "Retrieving ${FW_WIFI_FILES[0]} failed !"
+        fi
+    else
+        if ! [[ -f "$WORK_DIR/${FW_WIFI_FILES[0]}" ]]; then
+            LOCAL="$WORK_DIR/$FW_WIFI_ARCH_DEB_FILE"
+            ar --output "$WORK_DIR" x "$LOCAL" data.tar.xz >> "$LOG" 2>&1 ||
+                printResult 1 "Extracting archives from deb file failed !"
+            TARGET="./lib/firmware/brcm/${FW_WIFI_FILES[0]}"
+            tar xJf "$WORK_DIR/data.tar.xz" --strip-components 4 -C "$WORK_DIR" "$TARGET" \
+                2>> "$LOG" || printResult 1 "Extracting ${FW_WIFI_FILES[0]} failed !"
+            rm "$WORK_DIR/data.tar.xz"
+        fi
+    fi
+    if ! [[ -f "$WORK_DIR/${FW_WIFI_FILES[1]}" ]] || 
+                ! [[ -f "$WORK_DIR/${FW_WIFI_FILES[2]}" ]]; then
+        LOCAL="$WORK_DIR/$FW_WIFI_ARCH_DEB_FILE"
+        ar --output "$WORK_DIR" x "$LOCAL" data.tar.xz >> "$LOG" 2>&1 ||
+            printResult 1 "Extracting archives from deb file failed !"
+        TARGET="./lib/firmware/brcm/${FW_WIFI_FILES[1]}"
+        tar xJf "$WORK_DIR/data.tar.xz" --strip-components 4 -C "$WORK_DIR" "$TARGET" \
+            2>> "$LOG" || printResult 1 "Extracting ${FW_WIFI_FILES[1]} failed !"
+        TARGET="./lib/firmware/brcm/${FW_WIFI_FILES[2]}"
+        tar xJf "$WORK_DIR/data.tar.xz" --strip-components 4 -C "$WORK_DIR" "$TARGET" \
+                2>> "$LOG" || printResult 1 "Extracting ${FW_WIFI_FILES[2]} failed !"
+        rm "$WORK_DIR/data.tar.xz"
+    fi
+    printResult 0 ""
+    echo -en "\t- Bluetooth firmware: "
+    LOCAL="$WORK_DIR/$FW_BT_FILE"
+    REMOTE="$FW_BT_URL/$FW_BT_FILE"
+    if ! [[ -f "$LOCAL" ]]; then
+        [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
+            printResult 1 "Retrieving $FW_BT_FILE failed !"
+    fi
+    printResult 0 ""
+} #}}}
+
+function get_portage #{{{
+{
+    local REMOTE
+    local LOCAL
+    echo -en "\t- Portage: "
+    LOCAL="$WORK_DIR/$PORTAGE_FILE"
+    REMOTE="$PORTAGE_URL/$PORTAGE_FILE"
+    [[ $(wget "$REMOTE.gpgsig" -O "$LOCAL.asc" >> "$LOG" 2>&1) -eq 0 ]] ||
+        printResult 1 "Retrieving portage tree signature failed !"
+    if [[ -f "$LOCAL" ]]; then
+        if [[ $(gpg --verify "$LOCAL.asc" >> "$LOG" 2>&1) -gt 0 ]]; then
             [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
                 printResult 1 "Retrieving portage tree failed !"
             [[ $(gpg --verify "$LOCAL.asc" >> "$LOG" 2>&1) -eq 0 ]] ||
                 printResult 1 "portage signature don't match !"
         fi
-        printResult 0 ""
+    else
+        [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
+            printResult 1 "Retrieving portage tree failed !"
+        [[ $(gpg --verify "$LOCAL.asc" >> "$LOG" 2>&1) -eq 0 ]] ||
+            printResult 1 "portage signature don't match !"
     fi
-    #}}}
-    #{{{ Retrieving the kernel
+    printResult 0 ""
+} #}}}
+
+function get_kernel #{{{
+{
     echo -en "\t- Kernel: "
     if [[ -d "$WORK_DIR/linux" ]]; then
         (
@@ -369,58 +428,16 @@ function get_contents #{{{
         )
     fi
     printResult 0 ""
-    #}}}
-    #{{{ Retrieving firmwares
-    if [[ -n "${FW_WIFI_FILES[0]}" ]]; then
-        echo -en "\t- Wifi firmware: "
-        LOCAL="$WORK_DIR/$FW_WIFI_ARCH_DEB_FILE"
-        REMOTE="$FW_WIFI_ARCH_DEB_URL/$FW_WIFI_ARCH_DEB_FILE"
-        if ! [[ -f "$LOCAL" ]]; then
-            [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
-                printResult 1 "Retrieving $FW_WIFI_ARCH_DEB_FILE failed !"
-        fi
-        if ! [[ "$RPI_VERSION" = "4" ]]; then
-            LOCAL="$WORK_DIR/${FW_WIFI_FILES[0]}"
-            REMOTE="$FW_WIFI_URL/${FW_WIFI_FILES[0]}"
-            if ! [[ -f "$LOCAL" ]]; then
-                [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
-                    printResult 1 "Retrieving ${FW_WIFI_FILES[0]} failed !"
-            fi
-        else
-            if ! [[ -f "$WORK_DIR/${FW_WIFI_FILES[0]}" ]]; then
-                LOCAL="$WORK_DIR/$FW_WIFI_ARCH_DEB_FILE"
-                ar --output "$WORK_DIR" x "$LOCAL" data.tar.xz >> "$LOG" 2>&1 ||
-                    printResult 1 "Extracting archives from deb file failed !"
-                TARGET="./lib/firmware/brcm/${FW_WIFI_FILES[0]}"
-                tar xJf "$WORK_DIR/data.tar.xz" --strip-components 4 -C "$WORK_DIR" "$TARGET" \
-                    2>> "$LOG" || printResult 1 "Extracting ${FW_WIFI_FILES[0]} failed !"
-                rm "$WORK_DIR/data.tar.xz"
-            fi
-        fi
-        if ! [[ -f "$WORK_DIR/${FW_WIFI_FILES[1]}" ]] || 
-                    ! [[ -f "$WORK_DIR/${FW_WIFI_FILES[2]}" ]]; then
-            LOCAL="$WORK_DIR/$FW_WIFI_ARCH_DEB_FILE"
-            ar --output "$WORK_DIR" x "$LOCAL" data.tar.xz >> "$LOG" 2>&1 ||
-                printResult 1 "Extracting archives from deb file failed !"
-            TARGET="./lib/firmware/brcm/${FW_WIFI_FILES[1]}"
-            tar xJf "$WORK_DIR/data.tar.xz" --strip-components 4 -C "$WORK_DIR" "$TARGET" \
-                2>> "$LOG" || printResult 1 "Extracting ${FW_WIFI_FILES[1]} failed !"
-            TARGET="./lib/firmware/brcm/${FW_WIFI_FILES[2]}"
-            tar xJf "$WORK_DIR/data.tar.xz" --strip-components 4 -C "$WORK_DIR" "$TARGET" \
-                    2>> "$LOG" || printResult 1 "Extracting ${FW_WIFI_FILES[2]} failed !"
-            rm "$WORK_DIR/data.tar.xz"
-        fi
-        printResult 0 ""
-        echo -en "\t- Bluetooth firmware: "
-        LOCAL="$WORK_DIR/$FW_BT_FILE"
-        REMOTE="$FW_BT_URL/$FW_BT_FILE"
-        if ! [[ -f "$LOCAL" ]]; then
-            [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
-                printResult 1 "Retrieving $FW_BT_FILE failed !"
-        fi
-        printResult 0 ""
-    fi
-    #}}}
+} #}}}
+
+function get_contents #{{{
+{
+    echo "* Getting the contents:"
+    get_firmwares
+    get_stage3
+    get_kernel
+    [[ "$ADD_PORTAGE" = true ]] && get_portage
+    [[ -n "${FW_WIFI_FILES[0]}" ]] && get_wifi_bt_fw
 } #}}}
 
 function build_kernel #{{{
@@ -451,30 +468,11 @@ function build_kernel #{{{
     )
 } #}}}
 
-function populate #{{{
+function install_firmware #{{{
 {
-    local KRN_RELEASE
-    local RES
     local BRD_DIR
-    [[ $MODE -eq 32 ]] && BRD_DIR="" || BRD_DIR="broadcom/"
-    echo "* Populating the root: "
-    # stage 3
-    echo -ne "\t- Installing stage 3: "
-    FLAVOUR=$(grep -v "^#" < "$WORK_DIR/latest-stage3-$MYARCH.txt" | cut -d " " -f 1)
-    tar xpf "$WORK_DIR/${FLAVOUR#*/}" --xattrs-include='*.*' \
-                    --numeric-owner -C "$WORK_DIR/$ROOT" >> "$LOG" 2>&1
-    printResult $? "Extracting stage 3 failed !"
-    # Portage
-    if [[ "$ADD_PORTAGE" = true ]]; then
-        echo -ne "\t- Installing portage tree: "
-        mkdir -p "$WORK_DIR/$ROOT/var/db/repos/gentoo" ||
-            printResult 1 "Unable to create local gentoo repos !"
-        tar xpf "$WORK_DIR/$PORTAGE_FILE" --strip-components=1 \
-                    -C "$WORK_DIR/$ROOT/var/db/repos/gentoo" >> "$LOG" 2>&1
-        printResult $? "Extracting portage failed !"
-    fi
-    #{{{ Firmwares
-    echo -ne "\t- Installing firmwares: "
+    local RES
+    echo -ne "\t- Installing firmware: "
     cp -r "$WORK_DIR"/{firmware/boot/overlays,"$ROOT"/boot/} >> "$LOG" 2>&1 ||
         printResult 1 "Installing overlays failed !"
     for FILE in "${FILESET_MIN[@]}"; do
@@ -504,11 +502,15 @@ function populate #{{{
         printResult $? "Installing $FW_BT_FILE failed !"
     fi
     echo -ne "\t- Installing broadcom driver: "
+    [[ $MODE -eq 32 ]] && BRD_DIR="" || BRD_DIR="broadcom/"
     cp "$WORK_DIR/"{"linux/arch/$MYARCH/boot/dts/${BRD_DIR}$BRCM_FILE","$ROOT/boot"} \
                 >> "$LOG" 2>&1
     printResult $? "Installing brcm drivers failed !"
-    #}}}
-    #{{{ Kernel
+} #}}}
+
+function install_kernel #{{{
+{
+    local KRN_RELEASE
     echo -ne "\t- Installing kernel: "
     cp "$WORK_DIR/"{"linux/arch/$MYARCH/boot/Image","$ROOT/boot/$KERNEL_FILE"} \
                 >> "$LOG" 2>&1
@@ -547,7 +549,29 @@ function populate #{{{
             printResult $? "Copying sources failed !"
         )
     fi
-    #}}}
+} #}}}
+
+function populate #{{{
+{
+    local FLAVOUR
+    echo "* Populating the root: "
+    # stage 3
+    echo -ne "\t- Installing stage 3: "
+    FLAVOUR=$(grep -v "^#" < "$WORK_DIR/latest-stage3-$MYARCH.txt" | cut -d " " -f 1)
+    tar xpf "$WORK_DIR/${FLAVOUR#*/}" --xattrs-include='*.*' \
+                    --numeric-owner -C "$WORK_DIR/$ROOT" >> "$LOG" 2>&1
+    printResult $? "Extracting stage 3 failed !"
+    # Portage
+    if [[ "$ADD_PORTAGE" = true ]]; then
+        echo -ne "\t- Installing portage tree: "
+        mkdir -p "$WORK_DIR/$ROOT/var/db/repos/gentoo" ||
+            printResult 1 "Unable to create local gentoo repos !"
+        tar xpf "$WORK_DIR/$PORTAGE_FILE" --strip-components=1 \
+                    -C "$WORK_DIR/$ROOT/var/db/repos/gentoo" >> "$LOG" 2>&1
+        printResult $? "Extracting portage failed !"
+    fi
+    install_firmware
+    install_kernel
 } #}}}
 
 function fstab_builder #{{{
@@ -602,7 +626,7 @@ function tune #{{{
     (
         cd "$WORK_DIR/$ROOT" >> "$LOG" 2>&1 ||
             printResult 1 "Switching to \"$WORK_DIR/$ROOT\" failed"
-        ln -sf /usr/share/zoneinfo/$TZ ./etc/localtime >> "$LOG" 2>&1
+        ln -sf "/usr/share/zoneinfo/$TZ" ./etc/localtime >> "$LOG" 2>&1
         printResult $? "Fixing timezone failed !"
     )
     echo -ne "\t- Fixing Keymap: "
