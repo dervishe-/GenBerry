@@ -8,6 +8,7 @@
 # vim: foldmarker={{{,}}} ts=4
 # shellcheck source=./GenBerry.cfg
 #
+    shopt -s extglob
 
 #{{{Parameters
 CONFIG_FILE="./GenBerry.cfg"
@@ -97,15 +98,22 @@ function flavoured_file #{{{
 {
     FILESET_BOOT=("${FILESET_BOOT_3[@]}")
     case $RPI_VERSION in
-        "1" )
+        1|0?(W) )
             [[ -n "$KERNEL_CONFIG" ]] || KERNEL_CONFIG=$KERNEL_CONFIG_1
             MODE=32
             ARM_FLAVOUR="$ARM_FLAVOUR_1"
-            BRCM_FILE=$BRCM_FILE_1
+            if [[ "$RPI_VERSION" = "1" ]]; then
+                BRCM_FILE=$BRCM_FILE_1
+            elif [[ "$RPI_VERSION" = "0W" ]]; then
+                BRCM_FILE=$BRCM_FILE_0W
+            elif [[ "$RPI_VERSION" = "0" ]]; then
+                BRCM_FILE=$BRCM_FILE_0
+            fi
+            echo "$BRCM_FILE"
             KERNEL_FILE="kernel.img"
             MCFLAGS=$MCFLAGS_1
             AARCH="armv6j-linux-gnueabihf" ;;
-        "2" )
+        2 )
             [[ -n "$KERNEL_CONFIG" ]] || KERNEL_CONFIG=$KERNEL_CONFIG_2
             MODE=32
             ARM_FLAVOUR="$ARM_FLAVOUR_3"
@@ -113,16 +121,22 @@ function flavoured_file #{{{
             KERNEL_FILE="kernel7.img"
             MCFLAGS=$MCFLAGS_2
             AARCH="armv7a-linux-gnueabihf" ;;
-        "3" )
+        3?(P) )
             [[ -n "$KERNEL_CONFIG" ]] || 
                 {
                     [[ $MODE -eq 64 ]] && 
                         KERNEL_CONFIG=$KERNEL_CONFIG_3 ||
                         KERNEL_CONFIG=$KERNEL_CONFIG_2
                 }
-            FW_WIFI_FILES=("${FW_WIFI_FILES_3[@]}")
-            BRCM_FILE=$BRCM_FILE_3
-            FW_BT_FILE=$FW_BT_FILE_3
+            if [[ "$RPI_VERSION" = "3" ]]; then
+                FW_WIFI_FILES=("${FW_WIFI_FILES_3[@]}")
+                BRCM_FILE=$BRCM_FILE_3
+                FW_BT_FILE=$FW_BT_FILE_3
+            else
+                FW_WIFI_FILES=("${FW_WIFI_FILES_3P[@]}")
+                BRCM_FILE=$BRCM_FILE_3P
+                FW_BT_FILE=$FW_BT_FILE_3P
+            fi
             if [[ $MODE -eq 64 ]]; then 
                 ARM_FLAVOUR="$ARM_FLAVOUR_4"
                 KERNEL_FILE="kernel8.img"
@@ -134,28 +148,7 @@ function flavoured_file #{{{
                 MCFLAGS=$MCFLAGS_2 
                 AARCH="armv7a-linux-gnueabihf"
             fi ;;
-        "3P" )
-            [[ -n "$KERNEL_CONFIG" ]] || 
-                {
-                    [[ $MODE -eq 64 ]] && 
-                        KERNEL_CONFIG=$KERNEL_CONFIG_3 ||
-                        KERNEL_CONFIG=$KERNEL_CONFIG_2
-                }
-            FW_WIFI_FILES=("${FW_WIFI_FILES_3P[@]}")
-            BRCM_FILE=$BRCM_FILE_3P
-            FW_BT_FILE=$FW_BT_FILE_3P
-            if [[ $MODE -eq 64 ]]; then 
-                ARM_FLAVOUR="$ARM_FLAVOUR_4"
-                KERNEL_FILE="kernel8.img"
-                MCFLAGS=$MCFLAGS_3 
-                AARCH="aarch64-linux-gnu"
-            else
-                ARM_FLAVOUR="$ARM_FLAVOUR_3"
-                KERNEL_FILE="kernel7.img"
-                MCFLAGS=$MCFLAGS_2 
-                AARCH="armv7a-linux-gnueabihf"
-            fi ;;
-        "4" )
+        4 )
             [[ -n "$KERNEL_CONFIG" ]] || KERNEL_CONFIG=$KERNEL_CONFIG_4
             FILESET_BOOT=("${FILESET_BOOT_4[@]}")
             BRCM_FILE=$BRCM_FILE_4
@@ -172,6 +165,8 @@ function flavoured_file #{{{
                 MCFLAGS=$MCFLAGS_4 
                 AARCH="armv7a-linux-gnueabihf"
             fi ;;
+        * ) echo "Unsupported Board: $RPI_VERSION. Check the help for the list."
+            exit 1 ;;
     esac
     [[ $MODE -eq 64 ]] && MYARCH="arm64" || MYARCH="arm"
 } #}}}
@@ -609,7 +604,11 @@ function tune #{{{
         cp "$CONFIG_FILE" "$WORK_DIR/$ROOT/boot/config.txt" 2>> "$LOG"
         printResult $? "Config file installing failed !"
     else
-        [[ $MODE -eq 64 ]] && CONFIG_FILE="${CONFIG_FILE}\narm_64bit=1\n"
+        [[ $MODE -eq 64 ]] && CONFIG_FILE="${CONFIG_FILE}\narm_64bit=1"
+        if [[ $RPI_VERSION = "0W" ]] || [[ $RPI_VERSION = "3" ]] || 
+            [[ $RPI_VERSION = "3P" ]] || [[ $RPI_VERSION = "4" ]]; then
+                CONFIG_FILE="$CONFIG_FILE\ndtparam=krnbt=on"
+        fi
         echo -e "$CONFIG_FILE" > "$WORK_DIR/$ROOT/boot/config.txt" 2>> "$LOG"
         printResult $? "Config file installing failed !"
     fi
@@ -692,6 +691,7 @@ function show_help #{{{
 Option's list:
 \t-h\t\tDisplay this help message\n
 \t-b <type>\tType of the board:
+\t\t\t0 for raspberryPi 0
 \t\t\t1 for raspberryPi 1 family
 \t\t\t2 for raspberryPi 2 family
 \t\t\t3 for raspberryPi 3B

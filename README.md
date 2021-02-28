@@ -13,13 +13,6 @@ image to put on the card.
 You can customize it with hostname, keyboard layout, timezone, kernel config, 
 config.txt and filesystem.
 
-The images are build following those tutorials:
-* https://wiki.gentoo.org/wiki/Raspberry_Pi
-* https://wiki.gentoo.org/wiki/Raspberry_Pi_3_64_bit_Install
-* https://wiki.gentoo.org/wiki/Raspberry_Pi4_64_Bit_Install
-* https://www.raspberrypi.org/documentation/linux/kernel/building.md
-* https://www.raspberrypi.org/documentation/configuration/config-txt/boot.md
-
 ## What the script actually do ?
 
 If you don't provide any workplace (-m option), the script will create a new one in /tmp. 
@@ -180,6 +173,15 @@ rc-update add wpa_supplicant default
 shutdown -r now
 ```
 Then, you just will have to customize your new system :)
+
+## Sources
+
+* https://wiki.gentoo.org/wiki/Raspberry_Pi
+* https://wiki.gentoo.org/wiki/Raspberry_Pi_3_64_bit_Install
+* https://wiki.gentoo.org/wiki/Raspberry_Pi4_64_Bit_Install
+* https://www.raspberrypi.org/documentation/linux/kernel/building.md
+* https://www.raspberrypi.org/documentation/configuration/config-txt/boot.md
+* https://www.framboise314.fr/le-port-serie-du-raspberry-pi-3-pas-simple/
 
 ## Todo
 
