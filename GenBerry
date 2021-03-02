@@ -8,7 +8,6 @@
 # vim: foldmarker={{{,}}} ts=4
 # shellcheck source=./GenBerry.cfg
 #
-    shopt -s extglob
 
 #{{{Parameters
 CONFIG_FILE="./GenBerry.cfg"
@@ -22,7 +21,10 @@ MOVE_KRN_SRC=false
 ADD_PORTAGE=false
 MY_CFG_TXT=false
 USE_IMG=false
+NO_ETH=false
+NO_WLAN=false
 
+shopt -s extglob
 source "$CONFIG_FILE"
 #}}}
 
@@ -104,10 +106,14 @@ function flavoured_file #{{{
             ARM_FLAVOUR="$ARM_FLAVOUR_1"
             if [[ "$RPI_VERSION" = "1" ]]; then
                 BRCM_FILE=$BRCM_FILE_1
+                NO_WLAN=true
             elif [[ "$RPI_VERSION" = "0W" ]]; then
                 BRCM_FILE=$BRCM_FILE_0W
+                NO_ETH=true
             elif [[ "$RPI_VERSION" = "0" ]]; then
                 BRCM_FILE=$BRCM_FILE_0
+                NO_ETH=true
+                NO_WLAN=true
             fi
             echo "$BRCM_FILE"
             KERNEL_FILE="kernel.img"
@@ -116,6 +122,7 @@ function flavoured_file #{{{
         2 )
             [[ -n "$KERNEL_CONFIG" ]] || KERNEL_CONFIG=$KERNEL_CONFIG_2
             MODE=32
+            NO_WLAN=true
             ARM_FLAVOUR="$ARM_FLAVOUR_3"
             BRCM_FILE=$BRCM_FILE_2
             KERNEL_FILE="kernel7.img"
@@ -569,6 +576,60 @@ function populate #{{{
     install_kernel
 } #}}}
 
+function fix_network #{{{
+{
+    if [[ "$NO_ETH" = false ]]; then
+        echo -ne "\t- Fixing Network (eth0): "
+        echo "config_eth0=\"dhcp\"" > "$WORK_DIR/$ROOT/etc/conf.d/net" 2>> "$LOG"
+        (
+            cd "$WORK_DIR/$ROOT/etc/init.d" >> "$LOG" 2>&1 || 
+                printResult 1 "Switching to \"$WORK_DIR/$ROOT/etc/init.d\" failed"
+            ln -s ./net.{lo,eth0} >> "$LOG" 2>&1
+            printResult $? "Linking network init script failed !"
+        )
+    fi
+    if [[ "$NO_WLAN" = false ]]; then
+        echo -ne "\t- Fixing Network (wlan0): "
+        echo "config_wlan0=\"dhcp\"" >> "$WORK_DIR/$ROOT/etc/conf.d/net" 2>> "$LOG"
+        (
+            cd "$WORK_DIR/$ROOT/etc/init.d" >> "$LOG" 2>&1 || 
+                printResult 1 "Switching to \"$WORK_DIR/$ROOT/etc/init.d\" failed"
+            ln -s ./net.{lo,wlan0} >> "$LOG" 2>&1
+            printResult $? "Linking network init script failed !"
+        )
+    fi
+    echo -ne "\t- Enabling time server client: "
+    (
+        cd "$WORK_DIR/$ROOT" >> "$LOG" 2>&1 ||
+            printResult 1 "Switching to \"$WORK_DIR/$ROOT\" failed"
+        ln -s /etc/init.d/busybox-ntpd ./etc/runlevels/default/.
+        printResult $? "Enabling busybox-ntpd service failed !"
+    )
+} #}}}
+
+function fix_time #{{{
+{
+    echo -ne "\t- Fixing Time: "
+    if [[ -f "$WORK_DIR/root/etc/runlevels/boot/hwclock" ]]; then
+            rm "$WORK_DIR/root/etc/runlevels/boot/hwclock" >> "$LOG" 2>&1 ||
+                printResult 1 "Disabling hwclock service failed !"
+    fi
+    (
+        cd "$WORK_DIR/$ROOT" >> "$LOG" 2>&1 ||
+            printResult 1 "Switching to \"$WORK_DIR/$ROOT\" failed"
+        ln -s /etc/init.d/swclock ./etc/runlevels/boot/. ||
+            printResult $? "Enabling swclock service failed !"
+    )
+    echo -ne "\t- Fixing Timezone: "
+    echo "$TZ" > "$WORK_DIR/$ROOT/etc/timezone" 2>> "$LOG"
+    (
+        cd "$WORK_DIR/$ROOT" >> "$LOG" 2>&1 ||
+            printResult 1 "Switching to \"$WORK_DIR/$ROOT\" failed"
+        ln -sf "/usr/share/zoneinfo/$TZ" ./etc/localtime >> "$LOG" 2>&1
+        printResult $? "Fixing timezone failed !"
+    )
+} #}}}
+
 function fstab_builder #{{{
 {
     for INDEX in $1; do
@@ -596,9 +657,11 @@ function tune #{{{
     echo -ne "\t- Fixing root password: "
     sed -i "s|root:\*:|root:$ROOT_PW_HASH:|" "$WORK_DIR/$ROOT/etc/shadow"
     printResult $? "Fixing root password failed !"
+
     echo -ne "\t- Tuning inittab: "
     sed -E -i "s|^(f0:12345.*)$|#\1|" "$WORK_DIR/$ROOT/etc/inittab" >> "$LOG" 2>&1
     printResult $? "Preventing serial console allotment failed !"
+
     echo -ne "\t- Tuning config.txt: "
     if [[ "$MY_CFG_TXT" = true ]]; then
         cp "$CONFIG_FILE" "$WORK_DIR/$ROOT/boot/config.txt" 2>> "$LOG"
@@ -617,53 +680,25 @@ function tune #{{{
     sed -E "s/\s+/ /g" < "$WORK_DIR/$ROOT/etc/fstab" | cut -d ' ' -f 1,2,3 | grep "/ " | 
         sed -E 's/([^ ]*) ([^ ]*) ([^ ]*)/root=\1 rootfstype=\3 rootwait/' > "$WORK_DIR/$ROOT/boot/cmdline.txt"
     printResult $? "cmdline.txt file installing failed !"
+
     echo -ne "\t- Tuning make.conf: "
     sed -E -i "s|^(CFLAGS.*)$|CFLAGS=\"$MCFLAGS\"\nMAKEOPTS=\"-j$NB_JOBS\"|" "$WORK_DIR/$ROOT/etc/portage/make.conf" >> "$LOG" 2>&1
     printResult $? "Fixing CFLAGS and MAKEOPTS failed !"
-    echo -ne "\t- Fixing Timezone: "
-    echo "$TZ" > "$WORK_DIR/$ROOT/etc/timezone" 2>> "$LOG"
-    (
-        cd "$WORK_DIR/$ROOT" >> "$LOG" 2>&1 ||
-            printResult 1 "Switching to \"$WORK_DIR/$ROOT\" failed"
-        ln -sf "/usr/share/zoneinfo/$TZ" ./etc/localtime >> "$LOG" 2>&1
-        printResult $? "Fixing timezone failed !"
-    )
+
     echo -ne "\t- Fixing Keymap: "
     echo "keymap=\"$KEYMAPS\"" > "$WORK_DIR/$ROOT/etc/conf.d/keymaps" 2>> "$LOG"
     printResult $? "Fixing keymap failed !"
     echo -ne "\t- Fixing Hostname: "
     echo "hostname=\"$HN\"" > "$WORK_DIR/$ROOT/etc/conf.d/hostname" 2>> "$LOG"
     printResult $? "Fixing hostname failed !"
-    echo -ne "\t- Fixing Network (eth0): "
-    echo "config_eth0=\"dhcp\"" > "$WORK_DIR/$ROOT/etc/conf.d/net" 2>> "$LOG"
-    (
-        cd "$WORK_DIR/$ROOT/etc/init.d" >> "$LOG" 2>&1 || 
-            printResult 1 "Switching to \"$WORK_DIR/$ROOT/etc/init.d\" failed"
-        ln -s ./net.{lo,eth0} >> "$LOG" 2>&1
-        printResult $? "Linking network init script failed !"
-    )
-    echo -ne "\t- Fixing Network (wlan0): "
-    echo "config_wlan0=\"dhcp\"" >> "$WORK_DIR/$ROOT/etc/conf.d/net" 2>> "$LOG"
-    (
-        cd "$WORK_DIR/$ROOT/etc/init.d" >> "$LOG" 2>&1 || 
-            printResult 1 "Switching to \"$WORK_DIR/$ROOT/etc/init.d\" failed"
-        ln -s ./net.{lo,wlan0} >> "$LOG" 2>&1
-        printResult $? "Linking network init script failed !"
-    )
-    echo -ne "\t- Fixing Time: "
-    [[ -f "$WORK_DIR/root/etc/runlevels/boot/hwclock" ]] && 
-        {
-            rm "$WORK_DIR/root/etc/runlevels/boot/hwclock" >> "$LOG" 2>&1 ||
-                printResult 1 "Disabling hwclock service failed !"
-        }
-    (
-        cd "$WORK_DIR/$ROOT" >> "$LOG" 2>&1 ||
-            printResult 1 "Switching to \"$WORK_DIR/$ROOT\" failed"
-        ln -s /etc/init.d/swclock ./etc/runlevels/boot/. ||
-            printResult 1 "Enabling swclock service failed !"
-        ln -s /etc/init.d/busybox-ntpd ./etc/runlevels/default/.
-        printResult $? "Enabling busybox-ntpd service failed !"
-    )
+    if [[ "$NO_WLAN" = false ]] || [[ "$NO_ETH" = false ]]; then
+        fix_network
+    else
+        [[ -f "$WORK_DIR/root/etc/runlevels/default/netmount" ]] &&
+            rm "$WORK_DIR/root/etc/runlevels/default/netmount" >> "$LOG" 2>&1
+        printResult $? "Disabling netmount failed !"
+    fi
+    fix_time
 } #}}}
 
 function clean #{{{

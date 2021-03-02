@@ -182,6 +182,7 @@ Then, you just will have to customize your new system :)
 * https://www.raspberrypi.org/documentation/linux/kernel/building.md
 * https://www.raspberrypi.org/documentation/configuration/config-txt/boot.md
 * https://www.framboise314.fr/le-port-serie-du-raspberry-pi-3-pas-simple/
+* https://socialcompare.com/fr/comparison/raspberrypi-models-comparison
 
 ## Todo
 
