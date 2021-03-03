@@ -3,71 +3,16 @@
 # GenBerry
 #
 # Author: Alexandre Keledjian <dervishe@protonmail.ch>
-# vim: foldmarker={{{,}}} ts=4
 # license: GPL v3.0
 #
+# vim: foldmarker={{{,}}} ts=4
+# shellcheck source=./GenBerry.cfg
+#
+
+# 
 
 #{{{Parameters
-ARM_FLAVOUR_1="armv6j_hardfp"   # For Pi 1 in 32 bits mode
-ARM_FLAVOUR_3="armv7a_hardfp"   # For Pi 2, 3, 3+ in 32 bits mode
-ARM_FLAVOUR_4="arm64"           # For Pi 3 and 4 in 64 bits mode
-MODE=64
-KERNEL_CONFIG_1="bcmrpi_defconfig"
-KERNEL_CONFIG_2="bcm2709_defconfig"
-KERNEL_CONFIG_3="bcmrpi3_defconfig"
-KERNEL_CONFIG_4="bcm2711_defconfig"
-FILESET_MIN=("COPYING.linux" "LICENCE.broadcom" "bootcode.bin")
-FILESET_BOOT_3=("fixup.dat" "fixup_cd.dat" "fixup_db.dat" "fixup_x.dat" "start.elf" "start_cd.elf" "start_db.elf" "start_x.elf")
-FILESET_BOOT_4=("fixup4.dat" "fixup4cd.dat" "fixup4db.dat" "fixup4x.dat" "start4.elf" "start4cd.elf" "start4db.elf" "start4x.elf")
-CARD="/dev/mmcblk0"
-IMG_PREFIX="GenBerry"
-ROOT="root"
-TZ="Europe/Paris"
-KEYMAPS="fr"
-HN="gibolin"
-GLRE_KEY="13EBBDBEDE7A12775DFDB1BABB572E0E2D182910"
-KEY_SERVER="hkps://keys.gentoo.org"
-FW_URL="https://github.com/raspberrypi/firmware"
-FW_WIFI_URL="https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/brcm"
-FW_WIFI_ARCH_DEB_URL="http://archive.raspberrypi.org/debian/pool/main/f/firmware-nonfree"
-FW_WIFI_ARCH_DEB_FILE="firmware-brcm80211_20190114-1+rpt3_all.deb"
-FW_WIFI_FILES_3=("brcmfmac43430-sdio.raspberrypi,3-model-b.txt" "brcmfmac43430-sdio.bin" "brcmfmac43430-sdio.clm_blob")
-FW_WIFI_FILES_3P=("brcmfmac43455-sdio.raspberrypi,3-model-b-plus.txt" "brcmfmac43455-sdio.bin" "brcmfmac43455-sdio.clm_blob")
-FW_WIFI_FILES_4=("brcmfmac43455-sdio.txt" "brcmfmac43455-sdio.bin" "brcmfmac43455-sdio.clm_blob")
-FW_BT_URL="https://raw.githubusercontent.com/RPi-Distro/bluez-firmware/master/broadcom/"
-FW_BT_FILE_3="BCM43430A1.hcd"
-FW_BT_FILE_3P="BCM4345C0.hcd"
-FW_BT_FILE_4="BCM-0bb4-0306.hcd"
-BRCM_FILE_1="bcm2708-rpi-b.dtb"
-BRCM_FILE_2="bcm2709-rpi-2-b.dtb"
-BRCM_FILE_3="bcm2710-rpi-3-b.dtb"
-BRCM_FILE_3P="bcm2710-rpi-3-b-plus.dtb"
-BRCM_FILE_4="bcm2711-rpi-4-b.dtb"
-KERNEL="https://github.com/raspberrypi/linux"
-STAGE3_URL="http://distfiles.gentoo.org/releases"
-PORTAGE_URL="http://distfiles.gentoo.org/snapshots"
-PORTAGE_FILE="portage-latest.tar.bz2"
-ROOT_PW_HASH="\$6\$xxPVR/Td5iP\$/7Asdgq0ux2sgNkklnndcG4g3493kUYfrrdenBXjxBxEsoLneJpDAwOyX/kkpFB4pU5dlhHEyN0SK4eh/WpmO0"
-ROOT_PW="raspberry"
-CONFIG_FILE="disable_overscan=1\ndtoverlay=vc4-fkms-v3d\nhdmi_drive=2\ndtparam=audio=on\ndtparam=krnbt=on\ngpu_mem=16"
-PARTITION_SCHEME="unit: sectors\n\nstart=2048, size=262144, type=c, bootable\nstart=264192, size=4194304, type=82\nstart=4458496, type=83"
-FORMAT_ROOT_EXT4="mkfs.ext4 -F -i 8192"
-FORMAT_ROOT_F2FS="mkfs.f2fs -f -O extra_attr,inode_checksum,sb_checksum"
-ROOT_FS="ext4"
-DEPENDS=("git" "sfdisk" "losetup" "blkid" "wget" "gpg" "partprobe" "sync")
-RPI_VERSION="4"
-WORK_DIR=$(mktemp -d -t bldGenPiImg-XXXXXXXXXX)
-WORK_DIR_OLD=""
-NBR_CORE=$(($(grep -c processor < /proc/cpuinfo) + 1))
-BLOC_SIZE=512
-NBR_BLOCS=$((7 * 1024 * 1024 * 1024 / BLOC_SIZE))
-MCFLAGS_1="-march=armv6j -mfpu=vfp -mfloat-abi=hard -O2"
-MCFLAGS_2="-march=armv7-a -mfpu=neon-vfpv4 -mfloat-abi=hard -O2"
-MCFLAGS_3="-march=armv8-a+crc -mtune=cortex-a53 -ftree-vectorize -O2 -pipe -fomit-frame-pointer"
-MCFLAGS_4="-march=armv8-a+crc+simd -mtune=cortex-a72 -ftree-vectorize -O2 -pipe -fomit-frame-pointer"
-NB_JOBS=4
-DEFAULT_POWER_GOV="ONDEMAND"
-
+CONFIG_FILE="./GenBerry.cfg"
 CHOICE_MADE=false
 GET_CONTENT=false
 PREPARE=false
@@ -78,6 +23,12 @@ MOVE_KRN_SRC=false
 ADD_PORTAGE=false
 MY_CFG_TXT=false
 USE_IMG=false
+NO_ETH=false
+NO_WLAN=false
+USE_SERIAL=false
+
+shopt -s extglob
+source "$CONFIG_FILE"
 #}}}
 
 function fix_actions #{{{
@@ -152,32 +103,63 @@ function flavoured_file #{{{
 {
     FILESET_BOOT=("${FILESET_BOOT_3[@]}")
     case $RPI_VERSION in
-        "1" )
+        1|0?(W) )
             [[ -n "$KERNEL_CONFIG" ]] || KERNEL_CONFIG=$KERNEL_CONFIG_1
             MODE=32
             ARM_FLAVOUR="$ARM_FLAVOUR_1"
-            BRCM_FILE=$BRCM_FILE_1
+            SERIAL_CMD="console=ttyAMA0,115200"
+            SERIAL_CFG="enable_uart=1"
+            SERIAL_ITB="s0:12345:respawn:/sbin/agetty -L 115200 ttyAMA0 vt100"
+            if [[ "$RPI_VERSION" = "1" ]]; then
+                BRCM_FILE=$BRCM_FILE_1
+                NO_WLAN=true
+            elif [[ "$RPI_VERSION" = "0W" ]]; then
+                BRCM_FILE=$BRCM_FILE_0W
+                FW_WIFI_FILES=("${FW_WIFI_FILES_0W[@]}")
+                FW_BT_FILE=$FW_BT_FILE_3
+                NO_ETH=true
+                SERIAL_CMD="console=ttyS0,115200"
+                SERIAL_ITB="s0:12345:respawn:/sbin/agetty -L 115200 ttyS0 vt100"
+            elif [[ "$RPI_VERSION" = "0" ]]; then
+                BRCM_FILE=$BRCM_FILE_0
+                NO_ETH=true
+                NO_WLAN=true
+            fi
+            echo "$BRCM_FILE"
             KERNEL_FILE="kernel.img"
             MCFLAGS=$MCFLAGS_1
             AARCH="armv6j-linux-gnueabihf" ;;
-        "2" )
+        2 )
             [[ -n "$KERNEL_CONFIG" ]] || KERNEL_CONFIG=$KERNEL_CONFIG_2
             MODE=32
+            NO_WLAN=true
             ARM_FLAVOUR="$ARM_FLAVOUR_3"
+            SERIAL_CMD="console=ttyAMA0,115200"
+            SERIAL_CFG="enable_uart=1"
+            SERIAL_ITB="s0:12345:respawn:/sbin/agetty -L 115200 ttyAMA0 vt100"
             BRCM_FILE=$BRCM_FILE_2
             KERNEL_FILE="kernel7.img"
             MCFLAGS=$MCFLAGS_2
             AARCH="armv7a-linux-gnueabihf" ;;
-        "3" )
+        3?(P) )
             [[ -n "$KERNEL_CONFIG" ]] || 
                 {
                     [[ $MODE -eq 64 ]] && 
                         KERNEL_CONFIG=$KERNEL_CONFIG_3 ||
                         KERNEL_CONFIG=$KERNEL_CONFIG_2
                 }
-            FW_WIFI_FILES=("${FW_WIFI_FILES_3[@]}")
-            BRCM_FILE=$BRCM_FILE_3
-            FW_BT_FILE=$FW_BT_FILE_3
+            SERIAL_CMD="console=ttyAMA0,115200"
+            SERIAL_CFG="dtoverlay=pi3-disable-bt"
+            SERIAL_ITB="s0:12345:respawn:/sbin/agetty -L 115200 ttyAMA0 vt100"
+            if [[ "$RPI_VERSION" = "3" ]]; then
+                FW_WIFI_FILES=("${FW_WIFI_FILES_3[@]}")
+                BRCM_FILE=$BRCM_FILE_3
+                FW_BT_FILE=$FW_BT_FILE_3
+            else
+                FW_WIFI_FILES=("${FW_WIFI_FILES_3P[@]}")
+                BRCM_FILE=$BRCM_FILE_3P
+                FW_BT_FILE=$FW_BT_FILE_3P
+            fi
             if [[ $MODE -eq 64 ]]; then 
                 ARM_FLAVOUR="$ARM_FLAVOUR_4"
                 KERNEL_FILE="kernel8.img"
@@ -189,29 +171,11 @@ function flavoured_file #{{{
                 MCFLAGS=$MCFLAGS_2 
                 AARCH="armv7a-linux-gnueabihf"
             fi ;;
-        "3P" )
-            [[ -n "$KERNEL_CONFIG" ]] || 
-                {
-                    [[ $MODE -eq 64 ]] && 
-                        KERNEL_CONFIG=$KERNEL_CONFIG_3 ||
-                        KERNEL_CONFIG=$KERNEL_CONFIG_2
-                }
-            FW_WIFI_FILES=("${FW_WIFI_FILES_3P[@]}")
-            BRCM_FILE=$BRCM_FILE_3P
-            FW_BT_FILE=$FW_BT_FILE_3P
-            if [[ $MODE -eq 64 ]]; then 
-                ARM_FLAVOUR="$ARM_FLAVOUR_4"
-                KERNEL_FILE="kernel8.img"
-                MCFLAGS=$MCFLAGS_3 
-                AARCH="aarch64-linux-gnu"
-            else
-                ARM_FLAVOUR="$ARM_FLAVOUR_3"
-                KERNEL_FILE="kernel7.img"
-                MCFLAGS=$MCFLAGS_2 
-                AARCH="armv7a-linux-gnueabihf"
-            fi ;;
-        "4" )
+        4 )
             [[ -n "$KERNEL_CONFIG" ]] || KERNEL_CONFIG=$KERNEL_CONFIG_4
+            SERIAL_CMD="console=ttyAMA0,115200"
+            SERIAL_CFG="dtoverlay=disable-bt"
+            SERIAL_ITB="s0:12345:respawn:/sbin/agetty -L 115200 ttyAMA0 vt100"
             FILESET_BOOT=("${FILESET_BOOT_4[@]}")
             BRCM_FILE=$BRCM_FILE_4
             FW_WIFI_FILES=("${FW_WIFI_FILES_4[@]}")
@@ -227,6 +191,8 @@ function flavoured_file #{{{
                 MCFLAGS=$MCFLAGS_4 
                 AARCH="armv7a-linux-gnueabihf"
             fi ;;
+        * ) echo "Unsupported Board: $RPI_VERSION. Check the help for the list."
+            exit 1 ;;
     esac
     [[ $MODE -eq 64 ]] && MYARCH="arm64" || MYARCH="arm"
 } #}}}
@@ -324,15 +290,8 @@ function mount_root #{{{
     printResult $? "Mounting the boot partition failed !"
 } #}}}
 
-function get_contents #{{{
+function get_firmwares #{{{
 {
-    local FLAVOUR
-    local REMOTE
-    local LOCAL
-    local TARGET
-    local FILE_HASH
-    echo "* Getting the contents:"
-    #{{{ Retrieving firmware
     echo -en "\t- Firmware: "
     if [[ -d "$WORK_DIR/firmware" ]]; then
         (
@@ -350,8 +309,14 @@ function get_contents #{{{
         )
     fi
     printResult 0 ""
-    #}}}
-    #{{{ Retrieving stage 3
+} #}}}
+
+function get_stage3 #{{{
+{
+    local FLAVOUR
+    local REMOTE
+    local LOCAL
+    local FILE_HASH
     echo -en "\t- Stage 3: "
     REMOTE="$STAGE3_URL/$MYARCH/autobuilds/latest-stage3-$ARM_FLAVOUR.txt"
     LOCAL="$WORK_DIR/latest-stage3-$MYARCH.txt"
@@ -382,31 +347,89 @@ function get_contents #{{{
             printResult 1 "The file sha512sum don't match."
     fi
     printResult 0 ""
-    #}}}
-    #{{{ Retrieving portage tree
-    if [[ "$ADD_PORTAGE" = true ]]; then
-        echo -en "\t- Portage: "
-        LOCAL="$WORK_DIR/$PORTAGE_FILE"
-        REMOTE="$PORTAGE_URL/$PORTAGE_FILE"
-        [[ $(wget "$REMOTE.gpgsig" -O "$LOCAL.asc" >> "$LOG" 2>&1) -eq 0 ]] ||
-            printResult 1 "Retrieving portage tree signature failed !"
-        if [[ -f "$LOCAL" ]]; then
-            if [[ $(gpg --verify "$LOCAL.asc" >> "$LOG" 2>&1) -gt 0 ]]; then
-                [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
-                    printResult 1 "Retrieving portage tree failed !"
-                [[ $(gpg --verify "$LOCAL.asc" >> "$LOG" 2>&1) -eq 0 ]] ||
-                    printResult 1 "portage signature don't match !"
-            fi
-        else
+} #}}}
+
+function get_wifi_bt_fw #{{{
+{
+    local REMOTE
+    local LOCAL
+    local TARGET
+    echo -en "\t- Wifi firmware: "
+    LOCAL="$WORK_DIR/$FW_WIFI_ARCH_DEB_FILE"
+    REMOTE="$FW_WIFI_ARCH_DEB_URL/$FW_WIFI_ARCH_DEB_FILE"
+    if ! [[ -f "$LOCAL" ]]; then
+        [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
+            printResult 1 "Retrieving $FW_WIFI_ARCH_DEB_FILE failed !"
+    fi
+    if ! [[ "$RPI_VERSION" = "4" ]] && ! [[ "$RPI_VERSION" = "0W" ]]; then
+        LOCAL="$WORK_DIR/${FW_WIFI_FILES[0]}"
+        REMOTE="$FW_WIFI_URL/${FW_WIFI_FILES[0]}"
+        if ! [[ -f "$LOCAL" ]]; then
+            [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
+                printResult 1 "Retrieving ${FW_WIFI_FILES[0]} failed !"
+        fi
+    else
+        if ! [[ -f "$WORK_DIR/${FW_WIFI_FILES[0]}" ]]; then
+            LOCAL="$WORK_DIR/$FW_WIFI_ARCH_DEB_FILE"
+            ar --output "$WORK_DIR" x "$LOCAL" data.tar.xz >> "$LOG" 2>&1 ||
+                printResult 1 "Extracting archives from deb file failed !"
+            TARGET="./lib/firmware/brcm/${FW_WIFI_FILES[0]}"
+            tar xJf "$WORK_DIR/data.tar.xz" --strip-components 4 -C "$WORK_DIR" "$TARGET" \
+                2>> "$LOG" || printResult 1 "Extracting ${FW_WIFI_FILES[0]} failed !"
+            rm "$WORK_DIR/data.tar.xz"
+        fi
+    fi
+    if ! [[ -f "$WORK_DIR/${FW_WIFI_FILES[1]}" ]] || 
+                ! [[ -f "$WORK_DIR/${FW_WIFI_FILES[2]}" ]]; then
+        LOCAL="$WORK_DIR/$FW_WIFI_ARCH_DEB_FILE"
+        ar --output "$WORK_DIR" x "$LOCAL" data.tar.xz >> "$LOG" 2>&1 ||
+            printResult 1 "Extracting archives from deb file failed !"
+        TARGET="./lib/firmware/brcm/${FW_WIFI_FILES[1]}"
+        tar xJf "$WORK_DIR/data.tar.xz" --strip-components 4 -C "$WORK_DIR" "$TARGET" \
+            2>> "$LOG" || printResult 1 "Extracting ${FW_WIFI_FILES[1]} failed !"
+        TARGET="./lib/firmware/brcm/${FW_WIFI_FILES[2]}"
+        tar xJf "$WORK_DIR/data.tar.xz" --strip-components 4 -C "$WORK_DIR" "$TARGET" \
+                2>> "$LOG" || printResult 1 "Extracting ${FW_WIFI_FILES[2]} failed !"
+        rm "$WORK_DIR/data.tar.xz"
+    fi
+    printResult 0 ""
+    echo -en "\t- Bluetooth firmware: "
+    LOCAL="$WORK_DIR/$FW_BT_FILE"
+    REMOTE="$FW_BT_URL/$FW_BT_FILE"
+    if ! [[ -f "$LOCAL" ]]; then
+        [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
+            printResult 1 "Retrieving $FW_BT_FILE failed !"
+    fi
+    printResult 0 ""
+} #}}}
+
+function get_portage #{{{
+{
+    local REMOTE
+    local LOCAL
+    echo -en "\t- Portage: "
+    LOCAL="$WORK_DIR/$PORTAGE_FILE"
+    REMOTE="$PORTAGE_URL/$PORTAGE_FILE"
+    [[ $(wget "$REMOTE.gpgsig" -O "$LOCAL.asc" >> "$LOG" 2>&1) -eq 0 ]] ||
+        printResult 1 "Retrieving portage tree signature failed !"
+    if [[ -f "$LOCAL" ]]; then
+        if [[ $(gpg --verify "$LOCAL.asc" >> "$LOG" 2>&1) -gt 0 ]]; then
             [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
                 printResult 1 "Retrieving portage tree failed !"
             [[ $(gpg --verify "$LOCAL.asc" >> "$LOG" 2>&1) -eq 0 ]] ||
                 printResult 1 "portage signature don't match !"
         fi
-        printResult 0 ""
+    else
+        [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
+            printResult 1 "Retrieving portage tree failed !"
+        [[ $(gpg --verify "$LOCAL.asc" >> "$LOG" 2>&1) -eq 0 ]] ||
+            printResult 1 "portage signature don't match !"
     fi
-    #}}}
-    #{{{ Retrieving the kernel
+    printResult 0 ""
+} #}}}
+
+function get_kernel #{{{
+{
     echo -en "\t- Kernel: "
     if [[ -d "$WORK_DIR/linux" ]]; then
         (
@@ -426,58 +449,16 @@ function get_contents #{{{
         )
     fi
     printResult 0 ""
-    #}}}
-    #{{{ Retrieving firmwares
-    if [[ -n "${FW_WIFI_FILES[0]}" ]]; then
-        echo -en "\t- Wifi firmware: "
-        LOCAL="$WORK_DIR/$FW_WIFI_ARCH_DEB_FILE"
-        REMOTE="$FW_WIFI_ARCH_DEB_URL/$FW_WIFI_ARCH_DEB_FILE"
-        if ! [[ -f "$LOCAL" ]]; then
-            [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
-                printResult 1 "Retrieving $FW_WIFI_ARCH_DEB_FILE failed !"
-        fi
-        if ! [[ "$RPI_VERSION" = "4" ]]; then
-            LOCAL="$WORK_DIR/${FW_WIFI_FILES[0]}"
-            REMOTE="$FW_WIFI_URL/${FW_WIFI_FILES[0]}"
-            if ! [[ -f "$LOCAL" ]]; then
-                [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
-                    printResult 1 "Retrieving ${FW_WIFI_FILES[0]} failed !"
-            fi
-        else
-            if ! [[ -f "$WORK_DIR/${FW_WIFI_FILES[0]}" ]]; then
-                LOCAL="$WORK_DIR/$FW_WIFI_ARCH_DEB_FILE"
-                ar --output "$WORK_DIR" x "$LOCAL" data.tar.xz >> "$LOG" 2>&1 ||
-                    printResult 1 "Extracting archives from deb file failed !"
-                TARGET="./lib/firmware/brcm/${FW_WIFI_FILES[0]}"
-                tar xJf "$WORK_DIR/data.tar.xz" --strip-components 4 -C "$WORK_DIR" "$TARGET" \
-                    2>> "$LOG" || printResult 1 "Extracting ${FW_WIFI_FILES[0]} failed !"
-                rm "$WORK_DIR/data.tar.xz"
-            fi
-        fi
-        if ! [[ -f "$WORK_DIR/${FW_WIFI_FILES[1]}" ]] || 
-                    ! [[ -f "$WORK_DIR/${FW_WIFI_FILES[2]}" ]]; then
-            LOCAL="$WORK_DIR/$FW_WIFI_ARCH_DEB_FILE"
-            ar --output "$WORK_DIR" x "$LOCAL" data.tar.xz >> "$LOG" 2>&1 ||
-                printResult 1 "Extracting archives from deb file failed !"
-            TARGET="./lib/firmware/brcm/${FW_WIFI_FILES[1]}"
-            tar xJf "$WORK_DIR/data.tar.xz" --strip-components 4 -C "$WORK_DIR" "$TARGET" \
-                2>> "$LOG" || printResult 1 "Extracting ${FW_WIFI_FILES[1]} failed !"
-            TARGET="./lib/firmware/brcm/${FW_WIFI_FILES[2]}"
-            tar xJf "$WORK_DIR/data.tar.xz" --strip-components 4 -C "$WORK_DIR" "$TARGET" \
-                    2>> "$LOG" || printResult 1 "Extracting ${FW_WIFI_FILES[2]} failed !"
-            rm "$WORK_DIR/data.tar.xz"
-        fi
-        printResult 0 ""
-        echo -en "\t- Bluetooth firmware: "
-        LOCAL="$WORK_DIR/$FW_BT_FILE"
-        REMOTE="$FW_BT_URL/$FW_BT_FILE"
-        if ! [[ -f "$LOCAL" ]]; then
-            [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
-                printResult 1 "Retrieving $FW_BT_FILE failed !"
-        fi
-        printResult 0 ""
-    fi
-    #}}}
+} #}}}
+
+function get_contents #{{{
+{
+    echo "* Getting the contents:"
+    get_firmwares
+    get_stage3
+    get_kernel
+    [[ "$ADD_PORTAGE" = true ]] && get_portage
+    [[ -n "${FW_WIFI_FILES[0]}" ]] && get_wifi_bt_fw
 } #}}}
 
 function build_kernel #{{{
@@ -508,30 +489,11 @@ function build_kernel #{{{
     )
 } #}}}
 
-function populate #{{{
+function install_firmware #{{{
 {
-    local KRN_RELEASE
-    local RES
     local BRD_DIR
-    [[ $MODE -eq 32 ]] && BRD_DIR="" || BRD_DIR="broadcom/"
-    echo "* Populating the root: "
-    # stage 3
-    echo -ne "\t- Installing stage 3: "
-    FLAVOUR=$(grep -v "^#" < "$WORK_DIR/latest-stage3-$MYARCH.txt" | cut -d " " -f 1)
-    tar xpf "$WORK_DIR/${FLAVOUR#*/}" --xattrs-include='*.*' \
-                    --numeric-owner -C "$WORK_DIR/$ROOT" >> "$LOG" 2>&1
-    printResult $? "Extracting stage 3 failed !"
-    # Portage
-    if [[ "$ADD_PORTAGE" = true ]]; then
-        echo -ne "\t- Installing portage tree: "
-        mkdir -p "$WORK_DIR/$ROOT/var/db/repos/gentoo" ||
-            printResult 1 "Unable to create local gentoo repos !"
-        tar xpf "$WORK_DIR/$PORTAGE_FILE" --strip-components=1 \
-                    -C "$WORK_DIR/$ROOT/var/db/repos/gentoo" >> "$LOG" 2>&1
-        printResult $? "Extracting portage failed !"
-    fi
-    #{{{ Firmwares
-    echo -ne "\t- Installing firmwares: "
+    local RES
+    echo -ne "\t- Installing firmware: "
     cp -r "$WORK_DIR"/{firmware/boot/overlays,"$ROOT"/boot/} >> "$LOG" 2>&1 ||
         printResult 1 "Installing overlays failed !"
     for FILE in "${FILESET_MIN[@]}"; do
@@ -543,7 +505,7 @@ function populate #{{{
             printResult 1 "Installing $FILE failed !"
     done
     printResult 0
-    if [[ -n "${FW_WIFI_FILES[0]}" ]]; then
+    if [[ "$NO_WLAN" = false ]]; then
         echo -ne "\t- Adding wifi firmware: "
         [[ -d "$WORK_DIR/$ROOT/lib/firmware/brcm" ]] || 
             {
@@ -561,11 +523,15 @@ function populate #{{{
         printResult $? "Installing $FW_BT_FILE failed !"
     fi
     echo -ne "\t- Installing broadcom driver: "
+    [[ $MODE -eq 32 ]] && BRD_DIR="" || BRD_DIR="broadcom/"
     cp "$WORK_DIR/"{"linux/arch/$MYARCH/boot/dts/${BRD_DIR}$BRCM_FILE","$ROOT/boot"} \
                 >> "$LOG" 2>&1
     printResult $? "Installing brcm drivers failed !"
-    #}}}
-    #{{{ Kernel
+} #}}}
+
+function install_kernel #{{{
+{
+    local KRN_RELEASE
     echo -ne "\t- Installing kernel: "
     cp "$WORK_DIR/"{"linux/arch/$MYARCH/boot/Image","$ROOT/boot/$KERNEL_FILE"} \
                 >> "$LOG" 2>&1
@@ -604,7 +570,83 @@ function populate #{{{
             printResult $? "Copying sources failed !"
         )
     fi
-    #}}}
+} #}}}
+
+function populate #{{{
+{
+    local FLAVOUR
+    echo "* Populating the root: "
+    # stage 3
+    echo -ne "\t- Installing stage 3: "
+    FLAVOUR=$(grep -v "^#" < "$WORK_DIR/latest-stage3-$MYARCH.txt" | cut -d " " -f 1)
+    tar xpf "$WORK_DIR/${FLAVOUR#*/}" --xattrs-include='*.*' \
+                    --numeric-owner -C "$WORK_DIR/$ROOT" >> "$LOG" 2>&1
+    printResult $? "Extracting stage 3 failed !"
+    # Portage
+    if [[ "$ADD_PORTAGE" = true ]]; then
+        echo -ne "\t- Installing portage tree: "
+        mkdir -p "$WORK_DIR/$ROOT/var/db/repos/gentoo" ||
+            printResult 1 "Unable to create local gentoo repos !"
+        tar xpf "$WORK_DIR/$PORTAGE_FILE" --strip-components=1 \
+                    -C "$WORK_DIR/$ROOT/var/db/repos/gentoo" >> "$LOG" 2>&1
+        printResult $? "Extracting portage failed !"
+    fi
+    install_firmware
+    install_kernel
+} #}}}
+
+function fix_network #{{{
+{
+    if [[ "$NO_ETH" = false ]]; then
+        echo -ne "\t- Fixing Network (eth0): "
+        echo "config_eth0=\"dhcp\"" > "$WORK_DIR/$ROOT/etc/conf.d/net" 2>> "$LOG"
+        (
+            cd "$WORK_DIR/$ROOT/etc/init.d" >> "$LOG" 2>&1 || 
+                printResult 1 "Switching to \"$WORK_DIR/$ROOT/etc/init.d\" failed"
+            ln -s ./net.{lo,eth0} >> "$LOG" 2>&1
+            printResult $? "Linking network init script failed !"
+        )
+    fi
+    if [[ "$NO_WLAN" = false ]]; then
+        echo -ne "\t- Fixing Network (wlan0): "
+        echo "config_wlan0=\"dhcp\"" >> "$WORK_DIR/$ROOT/etc/conf.d/net" 2>> "$LOG"
+        (
+            cd "$WORK_DIR/$ROOT/etc/init.d" >> "$LOG" 2>&1 || 
+                printResult 1 "Switching to \"$WORK_DIR/$ROOT/etc/init.d\" failed"
+            ln -s ./net.{lo,wlan0} >> "$LOG" 2>&1
+            printResult $? "Linking network init script failed !"
+        )
+    fi
+    echo -ne "\t- Enabling time server client: "
+    (
+        cd "$WORK_DIR/$ROOT" >> "$LOG" 2>&1 ||
+            printResult 1 "Switching to \"$WORK_DIR/$ROOT\" failed"
+        ln -s /etc/init.d/busybox-ntpd ./etc/runlevels/default/.
+        printResult $? "Enabling busybox-ntpd service failed !"
+    )
+} #}}}
+
+function fix_time #{{{
+{
+    echo -ne "\t- Fixing Time: "
+    if [[ -f "$WORK_DIR/root/etc/runlevels/boot/hwclock" ]]; then
+            rm "$WORK_DIR/root/etc/runlevels/boot/hwclock" >> "$LOG" 2>&1 ||
+                printResult 1 "Disabling hwclock service failed !"
+    fi
+    (
+        cd "$WORK_DIR/$ROOT" >> "$LOG" 2>&1 ||
+            printResult 1 "Switching to \"$WORK_DIR/$ROOT\" failed"
+        ln -s /etc/init.d/swclock ./etc/runlevels/boot/. >> "$LOG" 2>&1
+        printResult $? "Enabling swclock service failed !"
+    )
+    echo -ne "\t- Fixing Timezone: "
+    echo "$TZ" > "$WORK_DIR/$ROOT/etc/timezone" 2>> "$LOG"
+    (
+        cd "$WORK_DIR/$ROOT" >> "$LOG" 2>&1 ||
+            printResult 1 "Switching to \"$WORK_DIR/$ROOT\" failed"
+        ln -sf "/usr/share/zoneinfo/$TZ" ./etc/localtime >> "$LOG" 2>&1
+        printResult $? "Fixing timezone failed !"
+    )
 } #}}}
 
 function fstab_builder #{{{
@@ -634,15 +676,21 @@ function tune #{{{
     echo -ne "\t- Fixing root password: "
     sed -i "s|root:\*:|root:$ROOT_PW_HASH:|" "$WORK_DIR/$ROOT/etc/shadow"
     printResult $? "Fixing root password failed !"
+
     echo -ne "\t- Tuning inittab: "
     sed -E -i "s|^(f0:12345.*)$|#\1|" "$WORK_DIR/$ROOT/etc/inittab" >> "$LOG" 2>&1
     printResult $? "Preventing serial console allotment failed !"
+
     echo -ne "\t- Tuning config.txt: "
     if [[ "$MY_CFG_TXT" = true ]]; then
         cp "$CONFIG_FILE" "$WORK_DIR/$ROOT/boot/config.txt" 2>> "$LOG"
         printResult $? "Config file installing failed !"
     else
-        [[ $MODE -eq 64 ]] && CONFIG_FILE="${CONFIG_FILE}\narm_64bit=1\n"
+        [[ $MODE -eq 64 ]] && CONFIG_FILE="${CONFIG_FILE}\narm_64bit=1"
+        if [[ $RPI_VERSION = "0W" ]] || [[ $RPI_VERSION = "3" ]] || 
+            [[ $RPI_VERSION = "3P" ]] || [[ $RPI_VERSION = "4" ]]; then
+                CONFIG_FILE="$CONFIG_FILE\ndtparam=krnbt=on"
+        fi
         echo -e "$CONFIG_FILE" > "$WORK_DIR/$ROOT/boot/config.txt" 2>> "$LOG"
         printResult $? "Config file installing failed !"
     fi
@@ -651,53 +699,35 @@ function tune #{{{
     sed -E "s/\s+/ /g" < "$WORK_DIR/$ROOT/etc/fstab" | cut -d ' ' -f 1,2,3 | grep "/ " | 
         sed -E 's/([^ ]*) ([^ ]*) ([^ ]*)/root=\1 rootfstype=\3 rootwait/' > "$WORK_DIR/$ROOT/boot/cmdline.txt"
     printResult $? "cmdline.txt file installing failed !"
+
+    if [[ "$USE_SERIAL" = true ]]; then
+        echo -ne "\t- Configure serial comm: "
+        sed -E -i "s/(.*)/\1 $SERIAL_CMD/" "$WORK_DIR/$ROOT/boot/cmdline.txt" >> "$LOG" 2>&1 ||
+            printResult 1 "cmdline.txt modification failed !"
+        echo "$SERIAL_CFG" >> "$WORK_DIR/$ROOT/boot/config.txt" 2>> "$LOG" ||
+            printResult 1 "config.txt modification failed !"
+        sed -E -i "s|^#?(s0.*)$|$SERIAL_ITB|" "$WORK_DIR/$ROOT/etc/inittab" >> "$LOG" 2>&1
+        printResult $? "inittab modification failed !"
+    fi
+
     echo -ne "\t- Tuning make.conf: "
     sed -E -i "s|^(CFLAGS.*)$|CFLAGS=\"$MCFLAGS\"\nMAKEOPTS=\"-j$NB_JOBS\"|" "$WORK_DIR/$ROOT/etc/portage/make.conf" >> "$LOG" 2>&1
     printResult $? "Fixing CFLAGS and MAKEOPTS failed !"
-    echo -ne "\t- Fixing Timezone: "
-    echo "$TZ" > "$WORK_DIR/$ROOT/etc/timezone" 2>> "$LOG"
-    (
-        cd "$WORK_DIR/$ROOT" >> "$LOG" 2>&1 ||
-            printResult 1 "Switching to \"$WORK_DIR/$ROOT\" failed"
-        ln -sf /usr/share/zoneinfo/$TZ ./etc/localtime >> "$LOG" 2>&1
-        printResult $? "Fixing timezone failed !"
-    )
+
     echo -ne "\t- Fixing Keymap: "
     echo "keymap=\"$KEYMAPS\"" > "$WORK_DIR/$ROOT/etc/conf.d/keymaps" 2>> "$LOG"
     printResult $? "Fixing keymap failed !"
     echo -ne "\t- Fixing Hostname: "
     echo "hostname=\"$HN\"" > "$WORK_DIR/$ROOT/etc/conf.d/hostname" 2>> "$LOG"
     printResult $? "Fixing hostname failed !"
-    echo -ne "\t- Fixing Network (eth0): "
-    echo "config_eth0=\"dhcp\"" > "$WORK_DIR/$ROOT/etc/conf.d/net" 2>> "$LOG"
-    (
-        cd "$WORK_DIR/$ROOT/etc/init.d" >> "$LOG" 2>&1 || 
-            printResult 1 "Switching to \"$WORK_DIR/$ROOT/etc/init.d\" failed"
-        ln -s ./net.{lo,eth0} >> "$LOG" 2>&1
-        printResult $? "Linking network init script failed !"
-    )
-    echo -ne "\t- Fixing Network (wlan0): "
-    echo "config_wlan0=\"dhcp\"" >> "$WORK_DIR/$ROOT/etc/conf.d/net" 2>> "$LOG"
-    (
-        cd "$WORK_DIR/$ROOT/etc/init.d" >> "$LOG" 2>&1 || 
-            printResult 1 "Switching to \"$WORK_DIR/$ROOT/etc/init.d\" failed"
-        ln -s ./net.{lo,wlan0} >> "$LOG" 2>&1
-        printResult $? "Linking network init script failed !"
-    )
-    echo -ne "\t- Fixing Time: "
-    [[ -f "$WORK_DIR/root/etc/runlevels/boot/hwclock" ]] && 
-        {
-            rm "$WORK_DIR/root/etc/runlevels/boot/hwclock" >> "$LOG" 2>&1 ||
-                printResult 1 "Disabling hwclock service failed !"
-        }
-    (
-        cd "$WORK_DIR/$ROOT" >> "$LOG" 2>&1 ||
-            printResult 1 "Switching to \"$WORK_DIR/$ROOT\" failed"
-        ln -s /etc/init.d/swclock ./etc/runlevels/boot/. ||
-            printResult 1 "Enabling swclock service failed !"
-        ln -s /etc/init.d/busybox-ntpd ./etc/runlevels/default/.
-        printResult $? "Enabling busybox-ntpd service failed !"
-    )
+    if [[ "$NO_WLAN" = false ]] || [[ "$NO_ETH" = false ]]; then
+        fix_network
+    else
+        [[ -f "$WORK_DIR/root/etc/runlevels/default/netmount" ]] &&
+            rm "$WORK_DIR/root/etc/runlevels/default/netmount" >> "$LOG" 2>&1
+        printResult $? "Disabling netmount failed !"
+    fi
+    fix_time
 } #}}}
 
 function clean #{{{
@@ -725,6 +755,7 @@ function show_help #{{{
 Option's list:
 \t-h\t\tDisplay this help message\n
 \t-b <type>\tType of the board:
+\t\t\t0 for raspberryPi 0
 \t\t\t1 for raspberryPi 1 family
 \t\t\t2 for raspberryPi 2 family
 \t\t\t3 for raspberryPi 3B
@@ -763,6 +794,8 @@ Option's list:
 \t-p\t\tCopy the portage tree,
 \t\t\tActual value is \"$ADD_PORTAGE\"\n
 \t-i\t\tBuild an image instead of writing directly on the media\n
+\t-u\t\tEnable serial communications
+\t\t\tMight disable bluetooth on some card\n
 After the first boot, follow those steps:\n
 \t* busybox udhcpc -i eth0
 \t* rc-service busybox-ntpd restart
@@ -780,7 +813,7 @@ After the first boot, follow those steps:\n
 KRN_VERSION=$(git ls-remote "$KERNEL" | grep -v "pull\|patch" | grep head | 
             cut -d '/' -f 3 | grep "^rpi-[0-9].*y$" | sort -rV | head -n 1)
 
-while getopts "hb:m:B:d:k:c:H:t:f:a:C:M:spi" OPTION; do #{{{
+while getopts "hb:m:B:d:k:c:H:t:f:a:C:M:spiu" OPTION; do #{{{
     case $OPTION in
         h ) show_help && exit 0 ;;
         b ) RPI_VERSION="$OPTARG" ;;
@@ -823,6 +856,7 @@ while getopts "hb:m:B:d:k:c:H:t:f:a:C:M:spi" OPTION; do #{{{
         p ) ADD_PORTAGE=true ;;
         i ) USE_IMG=true
             CARD=loopback ;;
+        u ) USE_SERIAL=true ;;
         * ) show_help && exit 1 ;;
     esac
 done #}}}
