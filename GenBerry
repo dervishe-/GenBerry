@@ -9,6 +9,8 @@
 # shellcheck source=./GenBerry.cfg
 #
 
+# 
+
 #{{{Parameters
 CONFIG_FILE="./GenBerry.cfg"
 CHOICE_MADE=false
@@ -23,6 +25,7 @@ MY_CFG_TXT=false
 USE_IMG=false
 NO_ETH=false
 NO_WLAN=false
+USE_SERIAL=false
 
 shopt -s extglob
 source "$CONFIG_FILE"
@@ -104,12 +107,19 @@ function flavoured_file #{{{
             [[ -n "$KERNEL_CONFIG" ]] || KERNEL_CONFIG=$KERNEL_CONFIG_1
             MODE=32
             ARM_FLAVOUR="$ARM_FLAVOUR_1"
+            SERIAL_CMD="console=ttyAMA0,115200"
+            SERIAL_CFG="enable_uart=1"
+            SERIAL_ITB="s0:12345:respawn:/sbin/agetty -L 115200 ttyAMA0 vt100"
             if [[ "$RPI_VERSION" = "1" ]]; then
                 BRCM_FILE=$BRCM_FILE_1
                 NO_WLAN=true
             elif [[ "$RPI_VERSION" = "0W" ]]; then
                 BRCM_FILE=$BRCM_FILE_0W
+                FW_WIFI_FILES=("${FW_WIFI_FILES_0W[@]}")
+                FW_BT_FILE=$FW_BT_FILE_3
                 NO_ETH=true
+                SERIAL_CMD="console=ttyS0,115200"
+                SERIAL_ITB="s0:12345:respawn:/sbin/agetty -L 115200 ttyS0 vt100"
             elif [[ "$RPI_VERSION" = "0" ]]; then
                 BRCM_FILE=$BRCM_FILE_0
                 NO_ETH=true
@@ -124,6 +134,9 @@ function flavoured_file #{{{
             MODE=32
             NO_WLAN=true
             ARM_FLAVOUR="$ARM_FLAVOUR_3"
+            SERIAL_CMD="console=ttyAMA0,115200"
+            SERIAL_CFG="enable_uart=1"
+            SERIAL_ITB="s0:12345:respawn:/sbin/agetty -L 115200 ttyAMA0 vt100"
             BRCM_FILE=$BRCM_FILE_2
             KERNEL_FILE="kernel7.img"
             MCFLAGS=$MCFLAGS_2
@@ -135,6 +148,9 @@ function flavoured_file #{{{
                         KERNEL_CONFIG=$KERNEL_CONFIG_3 ||
                         KERNEL_CONFIG=$KERNEL_CONFIG_2
                 }
+            SERIAL_CMD="console=ttyAMA0,115200"
+            SERIAL_CFG="dtoverlay=pi3-disable-bt"
+            SERIAL_ITB="s0:12345:respawn:/sbin/agetty -L 115200 ttyAMA0 vt100"
             if [[ "$RPI_VERSION" = "3" ]]; then
                 FW_WIFI_FILES=("${FW_WIFI_FILES_3[@]}")
                 BRCM_FILE=$BRCM_FILE_3
@@ -157,6 +173,9 @@ function flavoured_file #{{{
             fi ;;
         4 )
             [[ -n "$KERNEL_CONFIG" ]] || KERNEL_CONFIG=$KERNEL_CONFIG_4
+            SERIAL_CMD="console=ttyAMA0,115200"
+            SERIAL_CFG="dtoverlay=disable-bt"
+            SERIAL_ITB="s0:12345:respawn:/sbin/agetty -L 115200 ttyAMA0 vt100"
             FILESET_BOOT=("${FILESET_BOOT_4[@]}")
             BRCM_FILE=$BRCM_FILE_4
             FW_WIFI_FILES=("${FW_WIFI_FILES_4[@]}")
@@ -342,7 +361,7 @@ function get_wifi_bt_fw #{{{
         [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
             printResult 1 "Retrieving $FW_WIFI_ARCH_DEB_FILE failed !"
     fi
-    if ! [[ "$RPI_VERSION" = "4" ]]; then
+    if ! [[ "$RPI_VERSION" = "4" ]] && ! [[ "$RPI_VERSION" = "0W" ]]; then
         LOCAL="$WORK_DIR/${FW_WIFI_FILES[0]}"
         REMOTE="$FW_WIFI_URL/${FW_WIFI_FILES[0]}"
         if ! [[ -f "$LOCAL" ]]; then
@@ -486,7 +505,7 @@ function install_firmware #{{{
             printResult 1 "Installing $FILE failed !"
     done
     printResult 0
-    if [[ -n "${FW_WIFI_FILES[0]}" ]]; then
+    if [[ "$NO_WLAN" = false ]]; then
         echo -ne "\t- Adding wifi firmware: "
         [[ -d "$WORK_DIR/$ROOT/lib/firmware/brcm" ]] || 
             {
@@ -617,8 +636,8 @@ function fix_time #{{{
     (
         cd "$WORK_DIR/$ROOT" >> "$LOG" 2>&1 ||
             printResult 1 "Switching to \"$WORK_DIR/$ROOT\" failed"
-        ln -s /etc/init.d/swclock ./etc/runlevels/boot/. ||
-            printResult $? "Enabling swclock service failed !"
+        ln -s /etc/init.d/swclock ./etc/runlevels/boot/. >> "$LOG" 2>&1
+        printResult $? "Enabling swclock service failed !"
     )
     echo -ne "\t- Fixing Timezone: "
     echo "$TZ" > "$WORK_DIR/$ROOT/etc/timezone" 2>> "$LOG"
@@ -680,6 +699,16 @@ function tune #{{{
     sed -E "s/\s+/ /g" < "$WORK_DIR/$ROOT/etc/fstab" | cut -d ' ' -f 1,2,3 | grep "/ " | 
         sed -E 's/([^ ]*) ([^ ]*) ([^ ]*)/root=\1 rootfstype=\3 rootwait/' > "$WORK_DIR/$ROOT/boot/cmdline.txt"
     printResult $? "cmdline.txt file installing failed !"
+
+    if [[ "$USE_SERIAL" = true ]]; then
+        echo -ne "\t- Configure serial comm: "
+        sed -E -i "s/(.*)/\1 $SERIAL_CMD/" "$WORK_DIR/$ROOT/boot/cmdline.txt" >> "$LOG" 2>&1 ||
+            printResult 1 "cmdline.txt modification failed !"
+        echo "$SERIAL_CFG" >> "$WORK_DIR/$ROOT/boot/config.txt" 2>> "$LOG" ||
+            printResult 1 "config.txt modification failed !"
+        sed -E -i "s|^(s0.*)$|$SERIAL_ITB|" "$WORK_DIR/$ROOT/etc/inittab" >> "$LOG" 2>&1
+        printResult $? "inittab modification failed !"
+    fi
 
     echo -ne "\t- Tuning make.conf: "
     sed -E -i "s|^(CFLAGS.*)$|CFLAGS=\"$MCFLAGS\"\nMAKEOPTS=\"-j$NB_JOBS\"|" "$WORK_DIR/$ROOT/etc/portage/make.conf" >> "$LOG" 2>&1
@@ -765,6 +794,8 @@ Option's list:
 \t-p\t\tCopy the portage tree,
 \t\t\tActual value is \"$ADD_PORTAGE\"\n
 \t-i\t\tBuild an image instead of writing directly on the media\n
+\t-u\t\tEnable serial communications
+\t\t\tMight disable bluetooth on some card\n
 After the first boot, follow those steps:\n
 \t* busybox udhcpc -i eth0
 \t* rc-service busybox-ntpd restart
@@ -782,7 +813,7 @@ After the first boot, follow those steps:\n
 KRN_VERSION=$(git ls-remote "$KERNEL" | grep -v "pull\|patch" | grep head | 
             cut -d '/' -f 3 | grep "^rpi-[0-9].*y$" | sort -rV | head -n 1)
 
-while getopts "hb:m:B:d:k:c:H:t:f:a:C:M:spi" OPTION; do #{{{
+while getopts "hb:m:B:d:k:c:H:t:f:a:C:M:spiu" OPTION; do #{{{
     case $OPTION in
         h ) show_help && exit 0 ;;
         b ) RPI_VERSION="$OPTARG" ;;
@@ -825,6 +856,7 @@ while getopts "hb:m:B:d:k:c:H:t:f:a:C:M:spi" OPTION; do #{{{
         p ) ADD_PORTAGE=true ;;
         i ) USE_IMG=true
             CARD=loopback ;;
+        u ) USE_SERIAL=true ;;
         * ) show_help && exit 1 ;;
     esac
 done #}}}
