@@ -5,8 +5,8 @@
 ## Purpose
 
 GenBerry is a shell script which provide a minimal gentoo image for
-Raspberry Pi 1, 2, 3b, 3b+ and 4b in 32 or 64 bit version. You can see it as a
-bootable and usable stage4 image.
+Raspberry Pi 0, 0W 1B, 2B, 3B, 3B+ and 4B in 32 or 64 bit version. You can see it as a
+bootable and usable stage4 image. The other boards have not been tested.
 By default, you will have the latest kernel, stage3 and portage tree. 
 You can build directly the sdcard image if you provide one or you can build an 
 image to put on the card.
@@ -40,9 +40,9 @@ GenBerry -h
 * A minimal working sdcard
 * An internet connection
 * A crossdev environment to compile the kernel:
-    * aarch64-linux-gnu (rpi 3, 3P, 4)
-    * armv7a-linux-gnueabihf (rPi 2, 3, 3P, 4)
-    * armv6j-linux-gnueabihf (rpi 1)
+    * aarch64-linux-gnu (rpi 3, 3+, 4)
+    * armv7a-linux-gnueabihf (rPi 2, 3, 3+, 4)
+    * armv6j-linux-gnueabihf (rpi 0, 0W, 1)
 
 ### Examples
 
@@ -98,11 +98,11 @@ Then, you just will have to customize your new system :)
 ## Todo
 
 * Change partitions scheme
-* Allow to (dis|e)able some actions
-* Add silent mode
-* Update the kernel
+* (dis|en)able some actions
+* Silent mode
+* Update kernel helper
 * Create tarball to expand on a sdcard instead of writing directly onto
 * For rPi4 activate USB attached SCSI
 * sshd ativated and root allowed to login
-* Allow to choose the password
+* Choose the password
 * Check the available space for building the image
