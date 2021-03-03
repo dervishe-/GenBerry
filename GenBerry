@@ -706,7 +706,7 @@ function tune #{{{
             printResult 1 "cmdline.txt modification failed !"
         echo "$SERIAL_CFG" >> "$WORK_DIR/$ROOT/boot/config.txt" 2>> "$LOG" ||
             printResult 1 "config.txt modification failed !"
-        sed -E -i "s|^(s0.*)$|$SERIAL_ITB|" "$WORK_DIR/$ROOT/etc/inittab" >> "$LOG" 2>&1
+        sed -E -i "s|^#?(s0.*)$|$SERIAL_ITB|" "$WORK_DIR/$ROOT/etc/inittab" >> "$LOG" 2>&1
         printResult $? "inittab modification failed !"
     fi
 
