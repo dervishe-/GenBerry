@@ -9,8 +9,6 @@
 # shellcheck source=./GenBerry.cfg
 #
 
-# 
-
 #{{{Parameters
 CONFIG_FILE="./GenBerry.cfg"
 CHOICE_MADE=false
@@ -665,6 +663,15 @@ function fstab_builder #{{{
     return 0
 } #}}}
 
+function firstRun_builder #{{{
+{
+    echo -ne "\t- Installing firstRun script in /etc/local.d: "
+    echo -e "$FIRSTRUN" > "$WORK_DIR/$ROOT/etc/local.d/firstRun.start" 2>> "$LOG" ||
+        printResult 1 "Failed to copy the content in the file"
+    chmod +x "$WORK_DIR/$ROOT/etc/local.d/firstRun.start" >> "$LOG" 2>&1
+    printResult $? "Failed to activate de script"
+} #}}}
+
 function tune #{{{
 {
     echo "* Tuning system: "
@@ -877,5 +884,6 @@ $PREPARE && prepare_card
 ( $POPULATE || $TUNE ) && mount_root
 $POPULATE && populate
 $TUNE && tune
+[[ "$NO_ETH" = false ]] && firstRun_builder
 clean
 exit 0
