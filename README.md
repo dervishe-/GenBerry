@@ -66,17 +66,20 @@ You can use this image after, this way:
 sudo dd if=GenBerry_3P.img of=/dev/yoursdcard status=progress
 ```
 
-### [Important] What to do after ?
+### What to do after ?
 
-Once your card is ready, plug it in you Pi and wait for the prompt.
+Once your card is ready, plug it in you Pi and boot. If you don't have a screen available
+you can use the -u option to connect to your pi.
+After the first boot, your pi will execute a `firstRun.start` script located in `/etc/local.d/`
+This scrit  is available in the FIRSTRUN variable in the GenBerry.cfg file.
+Basically, it will ru udhcpc on eth0, sync the time, emerge dhcpcd, delete itself and reboot.
+After this reboot, your pi will be available thrue eth0.
+Once you're logged in, just execute this few commands.
 
 ```bash
-busybox udhcpc -i eth0
-rc-service busybox-ntpd restart
 emerge --sync
 emerge -auD --newuse @world
 emerge -av --depclean
-emerge -av dhcpcd
 # If you want to use Wifi
 emerge -av wpa_supplicant
 rc-update add wpa_supplicant default
