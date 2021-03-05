@@ -1,6 +1,6 @@
 # GenBerry
 
-![logo GenBerry](./GenBerry.png)
+![logo GenBerry](./GenBerry.webp)
 
 ## Purpose
 
