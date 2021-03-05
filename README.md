@@ -8,20 +8,18 @@ GenBerry is a shell script which provide a minimal gentoo image for
 Raspberry Pi 0, 0W 1B, 2B, 3B, 3B+ and 4B in 32 or 64 bit version. You can see it as a
 bootable and usable stage4 image. The other boards have not been tested.
 By default, you will have the latest kernel, stage3 and portage tree. 
-You can build directly the sdcard image if you provide one or you can build an 
+You can install the system on a sdcard if you provide one or you can build an 
 image to put on the card.
 You can customize it with hostname, keyboard layout, timezone, kernel config, 
-config.txt and filesystem.
-You can also enable the serial console communications.
+config.txt and filesystem type. You can also enable the serial console communications.
 
 ## What the script actually do ?
 
 If you don't provide any workplace (-m option), the script will create a new one in /tmp. 
 By default, it will ask you an sdcard plugged. It will retrieve the latests kernel sources,
-stage3, portage tree and firmwares from their respectives repository. (Cf the config 
-part in the script).
+stage3, portage tree and firmwares from their respectives repository. (Cf GenBerry.cfg).
 It will configure and build the kernel, modules and device tree. Then it will prepare 
-the card (partitions, format), expand the various archive on it.
+the card (partitions, format) and expand the various archives on it.
 When all the files are where they belong, the script will tune a little the system for you.
 
 ## How to use it
@@ -69,9 +67,9 @@ sudo dd if=GenBerry_3P.img of=/dev/yoursdcard status=progress
 ### What to do after ?
 
 Once your card is ready, plug it in you Pi and boot. If you don't have a screen available
-you can use the -u option to connect to your pi.
+you can use the -u option to connect to your pi via the uart serial interface.
 After the first boot, your pi will execute a `firstRun.start` script located in `/etc/local.d/`
-This scrit  is available in the FIRSTRUN variable in the GenBerry.cfg file.
+The content of this scrit is available in the `FIRSTRUN` variable in the `GenBerry.cfg` file.
 Basically, it will ru udhcpc on eth0, sync the time, emerge dhcpcd, delete itself and reboot.
 After this reboot, your pi will be available thrue eth0.
 Once you're logged in, just execute this few commands.

@@ -804,13 +804,10 @@ Option's list:
 \t-u\t\tEnable serial communications
 \t\t\tMight disable bluetooth on some card\n
 After the first boot, follow those steps:\n
-\t* busybox udhcpc -i eth0
-\t* rc-service busybox-ntpd restart
 \t* emerge --sync
 \t* perl-cleaner --all
 \t* emerge -vauD --newuse @world
 \t* emerge -a --depclean
-\t* emerge -vaD dhcpcd
 \t* emerge -vaD wpa_supplicant # If you want to use wifi
 \t* shutdown -r now
 "
