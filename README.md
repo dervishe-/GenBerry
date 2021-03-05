@@ -43,7 +43,7 @@ GenBerry -h
 |-i| |Build an image instead of writing directly on the media|
 |-u| |Enable serial communications. Might disable bluetooth on some card|
 |-b|type|Type of the board: `0` *(Pi0)*, `0W` *(Pi0W)*, `1` *(Pi1)*, `2` *(Pi2)*, `3` *(Pi3)*, `3P` *(Pi3B+)*, `4` *(4B)* *Default value: `4`*|
-|-m|dir|Set the mount point for the disk. *Default value is a temporary directory*|
+|-m|dir|Set the working directory. *Default value is a temporary one in `/tmp`*|
 |-B|branch|Install a specific kernel branch (from rPi kernel github repository)|
 |-d|device|Device to use for install. *Default value is `/dev/mmcblk0`*|
 |-k|lang|Lang for the keymaps. *Default value is `fr`*|
