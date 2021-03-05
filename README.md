@@ -37,24 +37,23 @@ GenBerry -h
 
 | Option | Argument | Description |
 |--------|----------|-------------|
-
-|-h||Display this help message|
-|-s||Copy the kernel sources on the card, Beware that this will run make distclean on the actual sources. Actual value is \"$MOVE_KRN_SRC\"|
-|-p||Copy the portage tree. Actual value is \"$ADD_PORTAGE\"|
-|-i||Build an image instead of writing directly on the media|
-|-u||Enable serial communications. Might disable bluetooth on some card|
-|-b|type|Type of the board: 0 for raspberryPi 0, 1 for raspberryPi 1 family, 2 for raspberryPi 2 family, 3 for raspberryPi 3B, 3P for raspberryPi 3B+, 4 for raspberryPi 4B, Actual value is $RPI_VERSION|
-|-m|dir|Set the mount point for the disk. Actual value is a temporary directory|
-|-B|branch|Install a specific kernel branch (from rPi kernel github repository). Actual value is the latest official branch|
-|-d|device|Device to use for install: Actual value is $CARD|
-|-k|lang|Lang for the keymapsActual value is \"$KEYMAPS\"|
-|-c|file|Use your own kernel config file. (You need to use the absolute path)|
-|-H|hostname|Fix the hostname. Actual value is \"$HN\"|
-|-t|timezone|Fix the timezone. Actual value is \"$TZ\"|
-|-f|filesystem|Filesystem for the root partition: f2fs, ext4. Actual value is $ROOT_FS|
-|-a|actions|Actions to perform Actually, for testing purpose. You can pick the actions in the following list: (all, retrieve_files, prepare_card, build_kernel, populate, tune). Actual value is \"all\"|
-|-C|file|Use your own config.txt file (You need to use the absolute path).|
-|-M|size|Mode: 32 or 64 bits. This apply only on rPi 3, 3P and 4. Actual value: $MODE|
+|-h| |Display this help message|
+|-s| |Copy the kernel sources on the card, Beware that this will run make distclean on the actual sources.|
+|-p| |Copy the portage tree.|
+|-i| |Build an image instead of writing directly on the media|
+|-u| |Enable serial communications. Might disable bluetooth on some card|
+|-b|type|Type of the board: `0` *(Pi0)*, `0W` *(Pi0W)*, `1` *(Pi1)*, `2` *(Pi2)*, `3` *(Pi3)*, `3P` *(Pi3B+)*, `4` *(4B)* *Default value: `4`*|
+|-m|dir|Set the mount point for the disk. *Default value is a temporary directory*|
+|-B|branch|Install a specific kernel branch (from rPi kernel github repository)|
+|-d|device|Device to use for install. *Default value is `/dev/mmcblk0`*|
+|-k|lang|Lang for the keymaps. *Default value is `fr`*|
+|-c|file|Use your own kernel config file. *You need to use the absolute path*|
+|-H|hostname|Fix the hostname. *Default value is `gibolin`*|
+|-t|timezone|Fix the timezone. *Default value is `Europe/Paris`*|
+|-f|filesystem|Filesystem for the root partition: `f2fs`, `ext4`. *Default value is `ext4`*|
+|-a|actions|Actions to perform Actually, **for testing purpose**. You can pick the actions in the following list: (`all`, `retrieve_files`, `prepare_card`, `build_kernel`, `populate`, `tune`). *Default value `all`*|
+|-C|file|Use your own config.txt file. *(You need to use the absolute path)*|
+|-M|size|Mode: `32` or `64` bits. **This apply only on rPi 3, 3P and 4**. *Default value: `64`*|
 
 ### Requirements
 
