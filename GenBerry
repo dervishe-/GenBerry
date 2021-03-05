@@ -9,8 +9,6 @@
 # shellcheck source=./GenBerry.cfg
 #
 
-# 
-
 #{{{Parameters
 CONFIG_FILE="./GenBerry.cfg"
 CHOICE_MADE=false
@@ -361,7 +359,7 @@ function get_wifi_bt_fw #{{{
         [[ $(wget "$REMOTE" -O "$LOCAL" >> "$LOG" 2>&1) -eq 0 ]] ||
             printResult 1 "Retrieving $FW_WIFI_ARCH_DEB_FILE failed !"
     fi
-    if ! [[ "$RPI_VERSION" = "4" ]] && ! [[ "$RPI_VERSION" = "0W" ]]; then
+    if ! [[ "$RPI_VERSION" = "0W" ]]; then
         LOCAL="$WORK_DIR/${FW_WIFI_FILES[0]}"
         REMOTE="$FW_WIFI_URL/${FW_WIFI_FILES[0]}"
         if ! [[ -f "$LOCAL" ]]; then
@@ -665,6 +663,15 @@ function fstab_builder #{{{
     return 0
 } #}}}
 
+function firstRun_builder #{{{
+{
+    echo -ne "\t- Installing firstRun script in /etc/local.d: "
+    echo -e "$FIRSTRUN" > "$WORK_DIR/$ROOT/etc/local.d/firstRun.start" 2>> "$LOG" ||
+        printResult 1 "Failed to copy the content in the file"
+    chmod +x "$WORK_DIR/$ROOT/etc/local.d/firstRun.start" >> "$LOG" 2>&1
+    printResult $? "Failed to activate de script"
+} #}}}
+
 function tune #{{{
 {
     echo "* Tuning system: "
@@ -797,13 +804,10 @@ Option's list:
 \t-u\t\tEnable serial communications
 \t\t\tMight disable bluetooth on some card\n
 After the first boot, follow those steps:\n
-\t* busybox udhcpc -i eth0
-\t* rc-service busybox-ntpd restart
 \t* emerge --sync
 \t* perl-cleaner --all
 \t* emerge -vauD --newuse @world
 \t* emerge -a --depclean
-\t* emerge -vaD dhcpcd
 \t* emerge -vaD wpa_supplicant # If you want to use wifi
 \t* shutdown -r now
 "
@@ -877,5 +881,6 @@ $PREPARE && prepare_card
 ( $POPULATE || $TUNE ) && mount_root
 $POPULATE && populate
 $TUNE && tune
+[[ "$NO_ETH" = false ]] && firstRun_builder
 clean
 exit 0

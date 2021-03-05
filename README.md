@@ -1,6 +1,6 @@
 # GenBerry
 
-![logo GenBerry](./GenBerry.png)
+![logo GenBerry](./GenBerry.webp)
 
 ## Purpose
 
@@ -8,31 +8,52 @@ GenBerry is a shell script which provide a minimal gentoo image for
 Raspberry Pi 0, 0W 1B, 2B, 3B, 3B+ and 4B in 32 or 64 bit version. You can see it as a
 bootable and usable stage4 image. The other boards have not been tested.
 By default, you will have the latest kernel, stage3 and portage tree. 
-You can build directly the sdcard image if you provide one or you can build an 
+You can install the system on a sdcard if you provide one or you can build an 
 image to put on the card.
 You can customize it with hostname, keyboard layout, timezone, kernel config, 
-config.txt and filesystem.
-You can also enable the serial console communications.
+config.txt and filesystem type. You can also enable the serial console communications.
 
 ## What the script actually do ?
 
 If you don't provide any workplace (-m option), the script will create a new one in /tmp. 
 By default, it will ask you an sdcard plugged. It will retrieve the latests kernel sources,
-stage3, portage tree and firmwares from their respectives repository. (Cf the config 
-part in the script).
+stage3, portage tree and firmwares from their respectives repository.
 It will configure and build the kernel, modules and device tree. Then it will prepare 
-the card (partitions, format), expand the various archive on it.
+the card (partitions, format) and expand the various archives on it.
 When all the files are where they belong, the script will tune a little the system for you.
 
 ## How to use it
 
 ### Configuration
 
-You can use the config file GenBerry.cfg to configure the script or directly 
+You can use the ![config file](./GenBerry.cfg) to configure the script or directly 
 with CLI options. Help is available via:
 ```bash
 GenBerry -h
 ```
+
+### Options list
+
+
+| Option | Argument | Description |
+|--------|----------|-------------|
+|-h| |Display this help message|
+|-s| |Copy the kernel sources on the card, Beware that this will run make distclean on the actual sources.|
+|-p| |Copy the portage tree.|
+|-i| |Build an image instead of writing directly on the media|
+|-u| |Enable serial communications. Might disable bluetooth on some card|
+|-b|type|Type of the board: `0` *(Pi0)*, `0W` *(Pi0W)*, `1` *(Pi1)*, `2` *(Pi2)*, `3` *(Pi3)*, `3P` *(Pi3B+)*, `4` *(4B)* *Default value: `4`*|
+|-m|dir|Set the mount point for the disk. *Default value is a temporary directory*|
+|-B|branch|Install a specific kernel branch (from rPi kernel github repository)|
+|-d|device|Device to use for install. *Default value is `/dev/mmcblk0`*|
+|-k|lang|Lang for the keymaps. *Default value is `fr`*|
+|-c|file|Use your own kernel config file. *You need to use the absolute path*|
+|-H|hostname|Fix the hostname. *Default value is `gibolin`*|
+|-t|timezone|Fix the timezone. *Default value is `Europe/Paris`*|
+|-f|filesystem|Filesystem for the root partition: `f2fs`, `ext4`. *Default value is `ext4`*|
+|-a|actions|Actions to perform Actually, **for testing purpose**. You can pick the actions in the following list: (`all`, `retrieve_files`, `prepare_card`, `build_kernel`, `populate`, `tune`). *Default value `all`*|
+|-C|file|Use your own config.txt file. *(You need to use the absolute path)*|
+|-M|size|Mode: `32` or `64` bits. **This apply only on rPi 3, 3P and 4**. *Default value: `64`*|
 
 ### Requirements
 
@@ -66,17 +87,20 @@ You can use this image after, this way:
 sudo dd if=GenBerry_3P.img of=/dev/yoursdcard status=progress
 ```
 
-### [Important] What to do after ?
+### What to do after ?
 
-Once your card is ready, plug it in you Pi and wait for the prompt.
+Once your card is ready, plug it in you Pi and boot. If you don't have a screen available
+you can use the -u option to connect to your pi via the uart serial interface.
+After the first boot, your pi will execute a `firstRun.start` script located in `/etc/local.d/`
+The content of this scrit is available in the `FIRSTRUN` variable in the `GenBerry.cfg` file.
+Basically, it will ru udhcpc on eth0, sync the time, emerge dhcpcd, delete itself and reboot.
+After this reboot, your pi will be available thrue eth0.
+Once you're logged in, just execute this few commands.
 
 ```bash
-busybox udhcpc -i eth0
-rc-service busybox-ntpd restart
 emerge --sync
 emerge -auD --newuse @world
 emerge -av --depclean
-emerge -av dhcpcd
 # If you want to use Wifi
 emerge -av wpa_supplicant
 rc-update add wpa_supplicant default
