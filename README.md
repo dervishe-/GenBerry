@@ -17,7 +17,7 @@ config.txt and filesystem type. You can also enable the serial console communica
 
 If you don't provide any workplace (-m option), the script will create a new one in /tmp. 
 By default, it will ask you an sdcard plugged. It will retrieve the latests kernel sources,
-stage3, portage tree and firmwares from their respectives repository. (Cf GenBerry.cfg).
+stage3, portage tree and firmwares from their respectives repository.
 It will configure and build the kernel, modules and device tree. Then it will prepare 
 the card (partitions, format) and expand the various archives on it.
 When all the files are where they belong, the script will tune a little the system for you.
@@ -26,7 +26,7 @@ When all the files are where they belong, the script will tune a little the syst
 
 ### Configuration
 
-You can use the config file GenBerry.cfg to configure the script or directly 
+You can use the ![config file](./GenBerry.cfg) to configure the script or directly 
 with CLI options. Help is available via:
 ```bash
 GenBerry -h
