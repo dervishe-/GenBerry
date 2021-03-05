@@ -15,7 +15,7 @@ config.txt and filesystem type. You can also enable the serial console communica
 
 ## What the script actually do ?
 
-If you don't provide any workplace (-m option), the script will create a new one in /tmp. 
+If you don't provide any workplace (`-m` option), the script will create a new one in /tmp. 
 By default, it will ask you an sdcard plugged. It will retrieve the latests kernel sources,
 stage3, portage tree and firmwares from their respectives repository.
 It will configure and build the kernel, modules and device tree. Then it will prepare 
@@ -92,10 +92,10 @@ sudo dd if=GenBerry_3P.img of=/dev/yoursdcard status=progress
 Once your card is ready, plug it in you Pi and boot. If you don't have a screen available
 you can use the -u option to connect to your pi via the uart serial interface.
 After the first boot, your pi will execute a `firstRun.start` script located in `/etc/local.d/`
-The content of this scrit is available in the `FIRSTRUN` variable in the `GenBerry.cfg` file.
-Basically, it will ru udhcpc on eth0, sync the time, emerge dhcpcd, delete itself and reboot.
+The content of this script is available in the ![`FIRSTRUN`](./GenBerry.cfg#L128).
+Basically, it will run udhcpc on eth0, sync the time, emerge dhcpcd, delete itself and reboot.
 After this reboot, your pi will be available thrue eth0.
-Once you're logged in, just execute this few commands.
+Once you're logged in, just execute this few commands, to make the thingss proper:
 
 ```bash
 emerge --sync
@@ -130,3 +130,8 @@ Then, you just will have to customize your new system :)
 * sshd ativated and root allowed to login
 * Choose the password
 * Check the available space for building the image
+* USB networking (at least for rPi0 familly)
+
+## Credits
+
+* The logo is from Luis Espinosa
