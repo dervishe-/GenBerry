@@ -42,6 +42,8 @@ GenBerry -h
 |-p| |Copy the portage tree.|
 |-i| |Build an image instead of writing directly on the media|
 |-u| |Enable serial communications. Might disable bluetooth on some card|
+|-U| |Enable usb tethering. Might need some tweak on your computer. Actually only tested on Pi 0 and 0W|
+|-S| |Enable sshd server with root connections allowed. If ssh-add -L give a record it will be use for the connection, else use the password|
 |-b|type|Type of the board: `0` *(Pi0)*, `0W` *(Pi0W)*, `1` *(Pi1)*, `2` *(Pi2)*, `3` *(Pi3)*, `3P` *(Pi3B+)*, `4` *(4B)* *Default value: `4`*|
 |-m|dir|Set the working directory. *Default value is a temporary one in `/tmp`*|
 |-B|branch|Install a specific kernel branch (from rPi kernel github repository)|
@@ -126,11 +128,9 @@ Then, you just will have to customize your new system :)
 * Silent mode
 * Update kernel helper
 * Create tarball to expand on a sdcard instead of writing directly onto
-* For rPi4 activate USB attached SCSI
-* sshd ativated and root allowed to login
+* For Pi4 activate USB attached SCSI
 * Choose the password
 * Check the available space for building the image
-* USB networking (at least for rPi0 familly)
 
 ## Credits
 
