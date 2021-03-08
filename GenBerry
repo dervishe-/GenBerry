@@ -957,7 +957,7 @@ done #}}}
     FORMAT_ROOT="$FORMAT_ROOT_EXT4"
 
 $CHOICE_MADE || fix_actions all
-build_worplace
+build_workplace
 LOG="$WORK_DIR/builder.log"
 flavoured_file
 announce
