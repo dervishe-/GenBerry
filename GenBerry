@@ -26,6 +26,8 @@ NO_WLAN=false
 USE_SERIAL=false
 USE_TETHER=false
 SSH=false
+DEL_WP=false
+WP_TMP=""
 
 shopt -s extglob
 source "$CONFIG_FILE"
@@ -101,7 +103,7 @@ function announce #{{{
     echo
     [[ "$RESPONSE" == "y" ]] ||
         {
-            [[ -z "$WORK_DIR_OLD" ]] && rmdir "$WORK_DIR"
+            [[ "$DEL_WP" = true ]] && rmdir "$WORK_DIR"
             echo "ok, then we stop here."
             exit 0
         }
@@ -206,12 +208,19 @@ function flavoured_file #{{{
 
 function test_requirements #{{{
 {
+    local SIZE_AVAIL
     echo "* Checking requirements:"
     for REQ in "${DEPENDS[@]}"; do
         echo -en "\t- $REQ: "
         which "$REQ" >> "$LOG" 2>&1
         printResult $? "You need to install $REQ."
     done
+    if [[ "$USE_IMG" = true ]]; then
+        echo -en "\t- Check available free space: "
+        SIZE_AVAIL=$(df -T "$WORK_DIR" | tail -n 1 | sed -E 's/( +)/ /g' | cut -d ' ' -f 5)
+        [[ $((SIZE_AVAIL * 1024)) -gt $IMG_SIZE ]]
+        printResult $? "You don't have enough space."
+    fi
     echo -en "\t- Gentoo public key: "
     [[ $(gpg --list-key "$GLRE_KEY" >> "$LOG" 2>&1) ]] || 
         gpg --keyserver "$KEY_SERVER" --recv-keys "$GLRE_KEY" >> "$LOG" 2>&1
@@ -476,7 +485,7 @@ function build_kernel #{{{
             printResult 1 "Unable to go to the linux directory."
         echo -ne "\t- Configuring: "
         if [[ "$KERNEL_CONFIG" = "olddefconfig" ]]; then
-            mv {../,}.config >> "$LOG" 2>&1 ||
+            cp "$MY_CFG" .config >> "$LOG" 2>&1 ||
                 printResult 1 "Unable to copy your config file."
         fi
         ARCH="$MYARCH" CROSS_COMPILE="$AARCH-" make "$KERNEL_CONFIG" >> "$LOG" 2>&1 ||
@@ -808,7 +817,7 @@ function clean #{{{
     printResult $? "Syncing failed !"
     echo -ne "\t- Unmounting $CARD: "
     [[ 0 -eq $(mount | grep -c "$CARD") ]] || 
-                umount "$WORK_DIR"/root/{boot,} >> "$LOG" 2>&1
+                umount "$WORK_DIR/$ROOT"/{boot,} >> "$LOG" 2>&1
     printResult $? "Unmounting $CARD failed !"
     [[ "$USE_IMG" = true ]] && 
         {
@@ -879,6 +888,21 @@ After the first boot, follow those steps:\n
 "
 } #}}}
 
+function build_workplace #{{{
+{
+    if [[ -z "$WP_TMP" ]]; then
+        WORK_DIR=$(mktemp -d -t bldGenPiImg-XXXXXXXXXX)
+        DEL_WP=true
+    else
+        [[ -d "$WP_TMP" ]] || 
+            {
+                mkdir -p "$WP_TMP"
+                DEL_WP=true
+            }
+        WORK_DIR=$(cd "$WP_TMP" && pwd)
+    fi
+} #}}}
+
 # Retrieve the last kernel version
 KRN_VERSION=$(git ls-remote "$KERNEL" | grep -v "pull\|patch" | grep head | 
             cut -d '/' -f 3 | grep "^rpi-[0-9].*y$" | sort -rV | head -n 1)
@@ -887,9 +911,7 @@ while getopts "hb:m:B:d:k:c:H:t:f:a:C:M:spiuUS" OPTION; do #{{{
     case $OPTION in
         h ) show_help && exit 0 ;;
         b ) RPI_VERSION="$OPTARG" ;;
-        m ) WORK_DIR_OLD="$WORK_DIR"
-            [[ -d "$WORK_DIR" ]] && rmdir "$WORK_DIR"
-            WORK_DIR="${OPTARG%/}" ;;
+        m ) WP_TMP="$OPTARG" ;;
         B ) KRN_VERSION="$OPTARG" ;;
         d ) CARD="$OPTARG" ;;
         k ) KEYMAPS="$OPTARG" ;;
@@ -898,12 +920,8 @@ while getopts "hb:m:B:d:k:c:H:t:f:a:C:M:spiuUS" OPTION; do #{{{
                     echo "$OPTARG is not a file."
                     exit 1
                 }
-            MY_CFG="$OPTARG"
-            cp "$OPTARG" "$WORK_DIR/.config" ||
-                {
-                    echo "Unable to move $OPTARG to $WORK_DIR."
-                    exit 1
-                }
+            
+            MY_CFG=$(readlink -f "$OPTARG")
             KERNEL_CONFIG="olddefconfig" ;;
         H ) HN="$OPTARG" ;;
         t ) TZ="$OPTARG" ;;
@@ -933,15 +951,17 @@ while getopts "hb:m:B:d:k:c:H:t:f:a:C:M:spiuUS" OPTION; do #{{{
     esac
 done #}}}
 
-LOG="$WORK_DIR"/builder.log
 
 [[ "$ROOT_FS" = "f2fs" ]] && 
     FORMAT_ROOT="$FORMAT_ROOT_F2FS" || 
     FORMAT_ROOT="$FORMAT_ROOT_EXT4"
 
 $CHOICE_MADE || fix_actions all
+build_worplace
+LOG="$WORK_DIR/builder.log"
 flavoured_file
 announce
+touch "$LOG"
 test_requirements
 $GET_CONTENT && get_contents
 $BUILDK && build_kernel
