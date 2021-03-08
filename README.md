@@ -133,7 +133,10 @@ Then, you just will have to customize your new system :)
 * Create tarball to expand on a sdcard instead of writing directly onto
 * For Pi4 activate USB attached SCSI
 * Choose the password
-* Check the available space for building the image
+
+## Disclaimer
+
+Of course, this script is given without any warantly. Use it at your own risks.
 
 ## Disclaimer
 
