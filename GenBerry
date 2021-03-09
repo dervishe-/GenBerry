@@ -696,8 +696,8 @@ function fix_network #{{{
 function fix_time #{{{
 {
     echo -ne "\t- Fixing Time: "
-    if [[ -f "$WORK_DIR/root/etc/runlevels/boot/hwclock" ]]; then
-            rm "$WORK_DIR/root/etc/runlevels/boot/hwclock" >> "$LOG" 2>&1 ||
+    if [[ -f "$WORK_DIR/$ROOT/etc/runlevels/boot/hwclock" ]]; then
+            rm "$WORK_DIR/$ROOT/etc/runlevels/boot/hwclock" >> "$LOG" 2>&1 ||
                 printResult 1 "Disabling hwclock service failed !"
     fi
     (
@@ -799,10 +799,10 @@ function tune #{{{
     if [[ "$NO_WLAN" = false ]] || [[ "$NO_ETH" = false ]] || [[ "$USE_TETHER" = true ]]; then
         fix_network
     else
-        [[ -f "$WORK_DIR/root/etc/runlevels/default/netmount" ]] &&
+        [[ -f "$WORK_DIR/$ROOT/etc/runlevels/default/netmount" ]] &&
             {
                 echo -ne "\t- Disabling netmount service: "
-                rm "$WORK_DIR/root/etc/runlevels/default/netmount" >> "$LOG" 2>&1
+                rm "$WORK_DIR/$ROOT/etc/runlevels/default/netmount" >> "$LOG" 2>&1
                 printResult $? "Disabling netmount failed !"
             }
     fi
