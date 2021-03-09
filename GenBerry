@@ -109,103 +109,6 @@ function announce #{{{
         }
 } #}}}
 
-function flavoured_file #{{{
-{
-    FILESET_BOOT=("${FILESET_BOOT_3[@]}")
-    case $RPI_VERSION in
-        1|0?(W) )
-            [[ -n "$KERNEL_CONFIG" ]] || KERNEL_CONFIG=$KERNEL_CONFIG_1
-            MODE=32
-            ARM_FLAVOUR="$ARM_FLAVOUR_1"
-            SERIAL_CMD="console=ttyAMA0,115200"
-            SERIAL_CFG="enable_uart=1"
-            SERIAL_ITB="s0:12345:respawn:/sbin/agetty -L 115200 ttyAMA0 vt100"
-            if [[ "$RPI_VERSION" = "1" ]]; then
-                BRCM_FILE=$BRCM_FILE_1
-                NO_WLAN=true
-            elif [[ "$RPI_VERSION" = "0W" ]]; then
-                BRCM_FILE=$BRCM_FILE_0W
-                FW_WIFI_FILES=("${FW_WIFI_FILES_0W[@]}")
-                FW_BT_FILE=$FW_BT_FILE_3
-                NO_ETH=true
-                SERIAL_CMD="console=ttyS0,115200"
-                SERIAL_ITB="s0:12345:respawn:/sbin/agetty -L 115200 ttyS0 vt100"
-            elif [[ "$RPI_VERSION" = "0" ]]; then
-                BRCM_FILE=$BRCM_FILE_0
-                NO_ETH=true
-                NO_WLAN=true
-            fi
-            KERNEL_FILE="kernel.img"
-            MCFLAGS=$MCFLAGS_1
-            AARCH="armv6j-linux-gnueabihf" ;;
-        2 )
-            [[ -n "$KERNEL_CONFIG" ]] || KERNEL_CONFIG=$KERNEL_CONFIG_2
-            MODE=32
-            NO_WLAN=true
-            ARM_FLAVOUR="$ARM_FLAVOUR_3"
-            SERIAL_CMD="console=ttyAMA0,115200"
-            SERIAL_CFG="enable_uart=1"
-            SERIAL_ITB="s0:12345:respawn:/sbin/agetty -L 115200 ttyAMA0 vt100"
-            BRCM_FILE=$BRCM_FILE_2
-            KERNEL_FILE="kernel7.img"
-            MCFLAGS=$MCFLAGS_2
-            AARCH="armv7a-linux-gnueabihf" ;;
-        3?(P) )
-            [[ -n "$KERNEL_CONFIG" ]] || 
-                {
-                    [[ $MODE -eq 64 ]] && 
-                        KERNEL_CONFIG=$KERNEL_CONFIG_3 ||
-                        KERNEL_CONFIG=$KERNEL_CONFIG_2
-                }
-            SERIAL_CMD="console=ttyAMA0,115200"
-            SERIAL_CFG="dtoverlay=pi3-disable-bt"
-            SERIAL_ITB="s0:12345:respawn:/sbin/agetty -L 115200 ttyAMA0 vt100"
-            if [[ "$RPI_VERSION" = "3" ]]; then
-                FW_WIFI_FILES=("${FW_WIFI_FILES_3[@]}")
-                BRCM_FILE=$BRCM_FILE_3
-                FW_BT_FILE=$FW_BT_FILE_3
-            else
-                FW_WIFI_FILES=("${FW_WIFI_FILES_3P[@]}")
-                BRCM_FILE=$BRCM_FILE_3P
-                FW_BT_FILE=$FW_BT_FILE_3P
-            fi
-            if [[ $MODE -eq 64 ]]; then 
-                ARM_FLAVOUR="$ARM_FLAVOUR_4"
-                KERNEL_FILE="kernel8.img"
-                MCFLAGS=$MCFLAGS_3 
-                AARCH="aarch64-linux-gnu"
-            else
-                ARM_FLAVOUR="$ARM_FLAVOUR_3"
-                KERNEL_FILE="kernel7.img"
-                MCFLAGS=$MCFLAGS_2 
-                AARCH="armv7a-linux-gnueabihf"
-            fi ;;
-        4 )
-            [[ -n "$KERNEL_CONFIG" ]] || KERNEL_CONFIG=$KERNEL_CONFIG_4
-            SERIAL_CMD="console=ttyAMA0,115200"
-            SERIAL_CFG="dtoverlay=disable-bt"
-            SERIAL_ITB="s0:12345:respawn:/sbin/agetty -L 115200 ttyAMA0 vt100"
-            FILESET_BOOT=("${FILESET_BOOT_4[@]}")
-            BRCM_FILE=$BRCM_FILE_4
-            FW_WIFI_FILES=("${FW_WIFI_FILES_4[@]}")
-            FW_BT_FILE=$FW_BT_FILE_4
-            if [[ $MODE -eq 64 ]]; then 
-                ARM_FLAVOUR="$ARM_FLAVOUR_4"
-                KERNEL_FILE="kernel8.img"
-                MCFLAGS=$MCFLAGS_4 
-                AARCH="aarch64-linux-gnu"
-            else
-                ARM_FLAVOUR="$ARM_FLAVOUR_3"
-                KERNEL_FILE="kernel7l.img"
-                MCFLAGS=$MCFLAGS_4 
-                AARCH="armv7a-linux-gnueabihf"
-            fi ;;
-        * ) echo "Unsupported Board: $RPI_VERSION. Check the help for the list."
-            exit 1 ;;
-    esac
-    [[ $MODE -eq 64 ]] && MYARCH="arm64" || MYARCH="arm"
-} #}}}
-
 function test_requirements #{{{
 {
     local SIZE_AVAIL
@@ -215,12 +118,12 @@ function test_requirements #{{{
         which "$REQ" >> "$LOG" 2>&1
         printResult $? "You need to install $REQ."
     done
-    if [[ "$USE_IMG" = true ]]; then
-        echo -en "\t- Check available free space: "
-        SIZE_AVAIL=$(df -T "$WORK_DIR" | tail -n 1 | sed -E 's/( +)/ /g' | cut -d ' ' -f 5)
-        [[ $((SIZE_AVAIL * 1024)) -gt $IMG_SIZE ]]
-        printResult $? "You don't have enough space."
-    fi
+    echo -en "\t- Check available free space: "
+    SIZE_AVAIL=$(df -T "$WORK_DIR" | tail -n 1 | sed -E 's/( +)/ /g' | cut -d ' ' -f 5)
+    [[ $(du "$WORK_DIR" | tail -n 1 | cut -f 1) -gt $THRESHOLD ]] && SIZE_NEED=0
+    [[ "$USE_IMG" = true ]] && SIZE_NEED=$((SIZE_NEED + IMG_SIZE))
+    printResult "$([[ $SIZE_NEED -lt $SIZE_AVAIL ]]; echo $?)" \
+                                                "You don't have enough space."
     echo -en "\t- Gentoo public key: "
     [[ $(gpg --list-key "$GLRE_KEY" >> "$LOG" 2>&1) ]] || 
         gpg --keyserver "$KEY_SERVER" --recv-keys "$GLRE_KEY" >> "$LOG" 2>&1
@@ -237,8 +140,7 @@ function test_requirements #{{{
     which "${AARCH}-gcc" >> "$LOG" 2>&1
     printResult $?  "You need to install the $AARCH compiler."
     echo -en "\t- Root permissions: "
-    [[ $(id -u) -eq 0 ]]
-    printResult $? "You need to be root."
+    printResult "$([[ $(id -u) -eq 0 ]]; echo $?)" "You need to be root."
 } #}}}
 
 function prepare_card #{{{
@@ -696,8 +598,8 @@ function fix_network #{{{
 function fix_time #{{{
 {
     echo -ne "\t- Fixing Time: "
-    if [[ -f "$WORK_DIR/root/etc/runlevels/boot/hwclock" ]]; then
-            rm "$WORK_DIR/root/etc/runlevels/boot/hwclock" >> "$LOG" 2>&1 ||
+    if [[ -f "$WORK_DIR/$ROOT/etc/runlevels/boot/hwclock" ]]; then
+            rm "$WORK_DIR/$ROOT/etc/runlevels/boot/hwclock" >> "$LOG" 2>&1 ||
                 printResult 1 "Disabling hwclock service failed !"
     fi
     (
@@ -799,10 +701,10 @@ function tune #{{{
     if [[ "$NO_WLAN" = false ]] || [[ "$NO_ETH" = false ]] || [[ "$USE_TETHER" = true ]]; then
         fix_network
     else
-        [[ -f "$WORK_DIR/root/etc/runlevels/default/netmount" ]] &&
+        [[ -f "$WORK_DIR/$ROOT/etc/runlevels/default/netmount" ]] &&
             {
                 echo -ne "\t- Disabling netmount service: "
-                rm "$WORK_DIR/root/etc/runlevels/default/netmount" >> "$LOG" 2>&1
+                rm "$WORK_DIR/$ROOT/etc/runlevels/default/netmount" >> "$LOG" 2>&1
                 printResult $? "Disabling netmount failed !"
             }
     fi
@@ -910,7 +812,11 @@ KRN_VERSION=$(git ls-remote "$KERNEL" | grep -v "pull\|patch" | grep head |
 while getopts "hb:m:B:d:k:c:H:t:f:a:C:M:spiuUS" OPTION; do #{{{
     case $OPTION in
         h ) show_help && exit 0 ;;
-        b ) RPI_VERSION="$OPTARG" ;;
+        b ) RPI_VERSION="$OPTARG"
+            if ! [[ -f "./Configs/rpi${RPI_VERSION}.conf" ]]; then
+                echo "Error: $RPI_VERSION is not a valid board."
+                exit 1
+            fi ;;
         m ) WP_TMP="$OPTARG" ;;
         B ) KRN_VERSION="$OPTARG" ;;
         d ) CARD="$OPTARG" ;;
@@ -920,9 +826,7 @@ while getopts "hb:m:B:d:k:c:H:t:f:a:C:M:spiuUS" OPTION; do #{{{
                     echo "$OPTARG is not a file."
                     exit 1
                 }
-            
-            MY_CFG=$(readlink -f "$OPTARG")
-            KERNEL_CONFIG="olddefconfig" ;;
+            MY_CFG=$(readlink -f "$OPTARG") ;;
         H ) HN="$OPTARG" ;;
         t ) TZ="$OPTARG" ;;
         f ) ROOT_FS="$OPTARG" ;;
@@ -936,7 +840,7 @@ while getopts "hb:m:B:d:k:c:H:t:f:a:C:M:spiuUS" OPTION; do #{{{
             CONFIG_FILE="$OPTARG" ;;
         M ) [[ $OPTARG -ne 32 && $OPTARG -ne 64 ]] &&
                 {
-                    echo "-S allowed values are: 32 and 64."
+                    echo "-M allowed values are: 32 and 64."
                     exit 1
                 }
             MODE=$OPTARG ;;
@@ -951,17 +855,35 @@ while getopts "hb:m:B:d:k:c:H:t:f:a:C:M:spiuUS" OPTION; do #{{{
     esac
 done #}}}
 
+source "./Configs/rpi${RPI_VERSION}.conf"
+[[ -n "$MY_CFG" ]] && KERNEL_CONFIG="olddefconfig"
 
-[[ "$ROOT_FS" = "f2fs" ]] && 
-    FORMAT_ROOT="$FORMAT_ROOT_F2FS" || 
+if [[ "$ROOT_FS" = "f2fs" ]]; then
+    FORMAT_ROOT="$FORMAT_ROOT_F2FS"
+else
     FORMAT_ROOT="$FORMAT_ROOT_EXT4"
+fi
+if [[ $MODE -eq 64 ]]; then
+    [[ -z "$AARCH" ]] && AARCH="$AARCH_64"
+    [[ -z "$MCFLAGS" ]] && MCFLAGS="$MCFLAGS_64"
+    [[ -z "$ARM_FLAVOUR" ]] && ARM_FLAVOUR="$ARM_FLAVOUR_64"
+    [[ -z "$KERNEL_CONFIG" ]] && KERNEL_CONFIG="$KERNEL_CONFIG_64"
+    [[ -z "$KERNEL_FILE" ]] && KERNEL_FILE="$KERNEL_FILE_64"
+    MYARCH="arm64"
+else
+    [[ -z "$AARCH" ]] && AARCH="$AARCH_32"
+    [[ -z "$MCFLAGS" ]] && MCFLAGS="$MCFLAGS_32"
+    [[ -z "$ARM_FLAVOUR" ]] && ARM_FLAVOUR="$ARM_FLAVOUR_32"
+    [[ -z "$KERNEL_CONFIG" ]] && KERNEL_CONFIG="$KERNEL_CONFIG_32"
+    [[ -z "$KERNEL_FILE" ]] && KERNEL_FILE="$KERNEL_FILE_32"
+    MYARCH="arm"
+fi
 
 $CHOICE_MADE || fix_actions all
-build_worplace
+build_workplace
 LOG="$WORK_DIR/builder.log"
-flavoured_file
 announce
-touch "$LOG"
+touch "$LOG" > /dev/null
 test_requirements
 $GET_CONTENT && get_contents
 $BUILDK && build_kernel
