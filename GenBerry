@@ -670,14 +670,19 @@ function tune #{{{
         fstab_builder "$FSTAB" > "$WORK_DIR/$ROOT/etc/fstab"
         printResult $? "fstab tuning failed !"
     elif [[ "$USE_MY_FSTAB" = true ]]; then
-            echo -ne "\t- Copying fstab: "
-            cp "$FSTAB_FILE" "$WORK_DIR/$ROOT/etc/fstab" >> "$LOG" 2>&1
-            printResult $? "Copy failed !"
+        echo -ne "\t- Copying fstab: "
+        cp "$FSTAB_FILE" "$WORK_DIR/$ROOT/etc/fstab" >> "$LOG" 2>&1
+        printResult $? "Copy failed !"
     fi
     echo -ne "\t- Tuning cmdline.txt: "
-    sed -E "s/\s+/ /g" < "$WORK_DIR/$ROOT/etc/fstab" | cut -d ' ' -f 1,2,3 | grep "/ " | 
-        sed -E 's/([^ ]*) ([^ ]*) ([^ ]*)/root=\1 rootfstype=\3 rootwait/' > "$WORK_DIR/$ROOT/boot/cmdline.txt"
-    printResult $? "cmdline.txt file installing failed !"
+    if [[ "$USE_TARB" = true ]] && [[ "$USE_MY_FSTAB" = false ]]; then
+        echo "root=YOUR_ROOT_PARTITION_HERE rootfstype=YOUR_ROOT_FS_HERE rootwait" > "$WORK_DIR/$ROOT/boot/cmdline.txt"
+        printResult $? "cmdline.txt file creation failed !"
+    else
+        sed -E "s/\s+/ /g" < "$WORK_DIR/$ROOT/etc/fstab" | cut -d ' ' -f 1,2,3 | grep "/ " | 
+            sed -E 's/([^ ]*) ([^ ]*) ([^ ]*)/root=\1 rootfstype=\3 rootwait/' > "$WORK_DIR/$ROOT/boot/cmdline.txt"
+        printResult $? "cmdline.txt file installation failed !"
+    fi
     echo -ne "\t- Fixing root password: "
     sed -i "s|root:\*:|root:$ROOT_PW_HASH:|" "$WORK_DIR/$ROOT/etc/shadow"
     printResult $? "Fixing root password failed !"
@@ -872,7 +877,7 @@ while getopts "hb:m:B:d:k:c:H:t:f:a:C:M:F:spiuUST" OPTION; do #{{{
                 exit 1
             fi
             MY_CFG_TXT=true
-            CONFIG_TXT_CONTENT="$OPTARG" ;;
+            CONFIG_TXT_CONTENT=$(readlink -f "$OPTARG") ;;
         M ) if [[ $OPTARG -ne 32 && $OPTARG -ne 64 ]]; then
                 echo "-M allowed values are: 32 and 64."
                 exit 1
@@ -883,7 +888,7 @@ while getopts "hb:m:B:d:k:c:H:t:f:a:C:M:F:spiuUST" OPTION; do #{{{
                 exit 1
             fi
             USE_MY_FSTAB=true
-            FSTAB_FILE="$OPTARG" ;;
+            FSTAB_FILE=$(readlink -f "$OPTARG") ;;
         s ) MOVE_KRN_SRC=true ;;
         p ) ADD_PORTAGE=true ;;
         i ) USE_IMG=true

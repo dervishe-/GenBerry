@@ -42,18 +42,19 @@ GenBerry -h
 |-B|branch|`rpi-X.XX.y`|Install a specific kernel branch (from rPi kernel github repository).|
 |-d|device|`/dev/mmcblk0`|Device to use for install.|
 |-k|lang|`fr`|Lang for the keymaps.|
-|-c|file|`/path/to/cfg`|Use your own kernel config file. *You need to use the absolute path*|
+|-c|file|`/path/to/cfg`|Use your own kernel config file.|
 |-H|hostname|`gibolin`|Fix the hostname.|
 |-t|timezone|`Europe/Paris`|Fix the timezone.|
 |-f|filesystem|f2fs, `ext4`|Filesystem for the root partition.|
 |-a|actions|`all`,retrieve_files,prepare_card, build_kernel,populate,tune|Actions to perform Actually, **for testing purpose only**|
-|-C|file|`/path/to/cfg`|Use your own config.txt file. *(You need to use the absolute path)*|
+|-C|file|`/path/to/cfg`|Use your own config.txt file.|
 |-M|size|32, `64`|Architecture 32 or 64 bits. **This apply only on rPi 3, 3P and 4**|
+|-F|file|`/path/to/cfg`|Use your own fstab file. **This only concern you if you choose the -T option.**|
 |-h| | |Display this help message.|
 |-s| | |Copy the kernel sources on the card, Beware that this will run make distclean on the actual sources.|
 |-p| | |Copy the portage tree.|
 |-i| | |Build an image to burn on the media.|
-|-T| | |Build a tarball to expand on a pre-formated media.|
+|-T| | |Build a tarball to expand on a pre-formated media. **If you don't provide an fstab file via the -F option. You will need to install it after and tune your /boot/cmdline.txt.**|
 |-u| | |Enable serial communications. Might disable bluetooth on some boards.|
 |-U| | |Enable usb tethering. Might need some tweak on your computer. Actually only tested on Pi 0 and 0W.|
 |-S| | |Enable sshd server with root connections allowed. If ssh-add -L give a record it will be use for the connection, else use the password.|
