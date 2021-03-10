@@ -39,23 +39,24 @@ GenBerry -h
 |:------:|:--------:|--------|-------------|
 |-b|type|0, 0W, 1, 2, 3, 3P, `4`|Type of the board: 0 *(Pi0)*, 0W *(Pi0W)*, 1 *(Pi1)*, 2 *(Pi2)*, 3 *(Pi3)*, 3P *(Pi3B+)*, 4 *(4B)*|
 |-m|dir|`/tmp/bldGenPiImg-XXXXXXXXXX`|Set the working directory.|
-|-B|branch|`rpi-X.XX.y`|Install a specific kernel branch (from rPi kernel github repository)|
-|-d|device|`/dev/mmcblk0`|Device to use for install|
+|-B|branch|`rpi-X.XX.y`|Install a specific kernel branch (from rPi kernel github repository).|
+|-d|device|`/dev/mmcblk0`|Device to use for install.|
 |-k|lang|`fr`|Lang for the keymaps.|
 |-c|file|`/path/to/cfg`|Use your own kernel config file. *You need to use the absolute path*|
-|-H|hostname|`gibolin`|Fix the hostname|
-|-t|timezone|`Europe/Paris`|Fix the timezone|
-|-f|filesystem|f2fs, `ext4`|Filesystem for the root partition|
+|-H|hostname|`gibolin`|Fix the hostname.|
+|-t|timezone|`Europe/Paris`|Fix the timezone.|
+|-f|filesystem|f2fs, `ext4`|Filesystem for the root partition.|
 |-a|actions|`all`,retrieve_files,prepare_card, build_kernel,populate,tune|Actions to perform Actually, **for testing purpose only**|
 |-C|file|`/path/to/cfg`|Use your own config.txt file. *(You need to use the absolute path)*|
 |-M|size|32, `64`|Architecture 32 or 64 bits. **This apply only on rPi 3, 3P and 4**|
-|-h| | |Display this help message|
+|-h| | |Display this help message.|
 |-s| | |Copy the kernel sources on the card, Beware that this will run make distclean on the actual sources.|
 |-p| | |Copy the portage tree.|
-|-i| | |Build an image instead of writing directly on the media|
-|-u| | |Enable serial communications. Might disable bluetooth on some card|
-|-U| | |Enable usb tethering. Might need some tweak on your computer. Actually only tested on Pi 0 and 0W|
-|-S| | |Enable sshd server with root connections allowed. If ssh-add -L give a record it will be use for the connection, else use the password|
+|-i| | |Build an image to burn on the media.|
+|-T| | |Build a tarball to expand on a pre-formated media.|
+|-u| | |Enable serial communications. Might disable bluetooth on some boards.|
+|-U| | |Enable usb tethering. Might need some tweak on your computer. Actually only tested on Pi 0 and 0W.|
+|-S| | |Enable sshd server with root connections allowed. If ssh-add -L give a record it will be use for the connection, else use the password.|
 
 (Defaults value in the table above are `highlighted`)
 
@@ -96,7 +97,7 @@ sudo dd if=GenBerry_3P.img of=/dev/yoursdcard status=progress
 Once your card is ready, plug it in you Pi and boot. If you don't have a screen available
 you can use the -u option to connect to your pi via the uart serial interface.
 After the first boot, your pi will execute a `firstRun.start` script located in `/etc/local.d/`
-The content of this script is available in the ![`FIRSTRUN`](./GenBerry.cfg#L128).
+The content of this script is available in the ![`FIRSTRUN`](./GenBerry.cfg).
 Basically, it will run udhcpc on eth0, sync the time, emerge dhcpcd, delete itself and reboot.
 After this reboot, your pi will be available thrue eth0.
 Once you're logged in, just execute this few commands, to make the thingss proper:
@@ -130,7 +131,6 @@ Then, you just will have to customize your new system :)
 * (dis|en)able some actions
 * Silent mode
 * Update kernel helper
-* Create tarball to expand on a sdcard instead of writing directly onto
 * For Pi4 activate USB attached SCSI
 * Choose the password
 
