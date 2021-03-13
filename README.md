@@ -58,6 +58,7 @@ GenBerry -h
 |-u| | |Enable serial communications. Might disable bluetooth on some boards.|
 |-U| | |Enable usb tethering. Might need some tweak on your computer. Actually only tested on Pi 0 and 0W.|
 |-S| | |Enable sshd server with root connections allowed. If ssh-add -L give a record it will be use for the connection, else use the password.|
+|-P| | |Choose your root password. You will be asked to type it. The characters won't appear when you will type. The password is not stored in clear. It will directly be used to generate the hash.|
 
 (Defaults value in the table above are `highlighted`)
 
@@ -133,7 +134,6 @@ Then, you just will have to customize your new system :)
 * Silent mode
 * Update kernel helper
 * For Pi4 activate USB attached SCSI
-* Choose the password
 
 ## Disclaimer
 
