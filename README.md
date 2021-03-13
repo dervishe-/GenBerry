@@ -139,6 +139,10 @@ Then, you just will have to customize your new system :)
 
 Of course, this script is given without any warantly. Use it at your own risks.
 
+## Disclaimer
+
+Of course, this script is given without any warantly. Use it at your own risks.
+
 ## Credits
 
 * The logo is from Luis Espinosa
