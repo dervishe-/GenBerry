@@ -126,6 +126,8 @@ Then, you just will have to customize your new system :)
 * https://www.framboise314.fr/le-port-serie-du-raspberry-pi-3-pas-simple/
 * https://socialcompare.com/fr/comparison/raspberrypi-models-comparison
 * http://wiki.openmoko.org/wiki/USB_Networking
+* https://gcc.gnu.org/onlinedocs/gcc/ARM-Options.html#ARM-Options
+* https://wiki.gentoo.org/wiki/GCC_optimization
 
 ## Todo
 
@@ -133,7 +135,9 @@ Then, you just will have to customize your new system :)
 * (dis|en)able some actions
 * Silent mode
 * Update kernel helper
+* Boot sur USB
 * For Pi4 activate USB attached SCSI
+* Adding userland utilities form RaspberryOS
 
 ## Disclaimer
 
