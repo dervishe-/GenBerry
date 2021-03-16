@@ -128,6 +128,7 @@ Then, you just will have to customize your new system :)
 * http://wiki.openmoko.org/wiki/USB_Networking
 * https://gcc.gnu.org/onlinedocs/gcc/ARM-Options.html#ARM-Options
 * https://wiki.gentoo.org/wiki/GCC_optimization
+* https://developer.arm.com/architectures/instruction-sets/floating-point
 
 ## Todo
 
@@ -138,10 +139,6 @@ Then, you just will have to customize your new system :)
 * Boot sur USB
 * For Pi4 activate USB attached SCSI
 * Adding userland utilities form RaspberryOS
-
-## Disclaimer
-
-Of course, this script is given without any warantly. Use it at your own risks.
 
 ## Disclaimer
 
