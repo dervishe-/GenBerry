@@ -46,7 +46,6 @@ GenBerry -h
 |-H|hostname|`gibolin`|Fix the hostname.|
 |-t|timezone|`Europe/Paris`|Fix the timezone.|
 |-f|filesystem|f2fs, `ext4`|Filesystem for the root partition.|
-|-a|actions|`all`,retrieve_files,prepare_card, build_kernel,populate,tune|Actions to perform Actually, **for testing purpose only**|
 |-C|file|`/path/to/cfg`|Use your own config.txt file.|
 |-M|size|32, `64`|Architecture 32 or 64 bits. **This apply only on rPi 3, 3P and 4**|
 |-F|file|`/path/to/cfg`|Use your own fstab file. **This only concern you if you choose the -T option.**|
