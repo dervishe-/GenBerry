@@ -1,6 +1,6 @@
 # GenBerry
 
-![logo GenBerry](./GenBerry.webp)
+![logo GenBerry](./Medias/GenBerry.webp)
 
 ## Purpose
 
@@ -138,7 +138,8 @@ Then, you just will have to customize your new system :)
 * Update kernel helper
 * Boot sur USB
 * For Pi4 activate USB attached SCSI
-* Adding userland utilities form RaspberryOS
+* Add userland utilities form RaspberryOS
+* Use qemu to compile on host
 
 ## Disclaimer
 
