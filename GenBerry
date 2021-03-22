@@ -24,6 +24,7 @@ USE_MY_FSTAB=false
 USE_IMG=false
 USE_TARB=false
 USE_MY_PW=false
+USE_QEMU=false
 NO_ETH=false
 NO_WLAN=false
 USE_SERIAL=false
@@ -73,7 +74,7 @@ function printResult #{{{
 {
     if [[ -z "$2" ]]; then local MESSAGE=""; else local MESSAGE="$2"; fi
     if [[ "$1" -ne 0 ]]; then
-        echo -e "\e[1;31m[FAIL]\e[0m\n\t$MESSAGE"
+        echo -e "\e[1;31m[FAIL]\e[0m\n\t$MESSAGE\n\tCheck the logs: $LOG"
         [[ -z "$3" ]] && clean
         exit 1
     else
@@ -222,6 +223,53 @@ function mount_root #{{{
         }
     mount "${PART}1" "$WORK_DIR/$ROOT/boot" >> "$LOG" 2>&1
     printResult $? "Mounting the boot partition failed !"
+} #}}}
+
+function setup_qemu #{{{
+{
+    local EXE_INTER
+    echo -n "* Setup qemu: "
+    if [[ "$MODE" -eq 64 ]]; then
+        ARM_EXE_INTER="$ARM_EXE_INTER_64"
+        EXE_INTER=/proc/sys/fs/binfmt_misc/aarch64
+    else
+        ARM_EXE_INTER="$ARM_EXE_INTER_32"
+        EXE_INTER=/proc/sys/fs/binfmt_misc/arm
+    fi
+    if ! [[ -f "$EXE_INTER" ]]; then
+        echo "$ARM_EXE_INTER" > /proc/sys/fs/binfmt_misc/register 2>> "$LOG" ||
+        printResult 1 "Unable to register ARM executable interpreter in running kernel."
+    fi
+    (
+        cd "$WORK_DIR/$ROOT" >> "$LOG" 2>&1 ||
+                printResult 1 "Unable to switch to $WORK_DIR/$ROOT."
+        ROOT=$PWD/ emerge --usepkgonly --oneshot --nodeps qemu >> "$LOG" 2>&1
+        printResult $? "Unable emerge qemu."
+    )
+} #}}}
+
+function chroot_qemu #{{{
+{
+    local DEVPTS_OPTS
+    echo "* Chroot: "
+    echo -ne "\t- mount tools (dev, sys, proc): "
+    for dir in "dev" "proc" "sys"; do
+        mount -o bind {,"$WORK_DIR/$ROOT"}/"$dir" >> "$LOG" 2>&1 ||
+            printResult 1 "Unable to mount $dir."
+    done
+    DEVPTS_OPTS="rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000"
+    mount -o $DEVPTS_OPTS devpts "$WORK_DIR/$ROOT/dev/pts" -t devpts >> "$LOG" 2>&1
+    printResult $? "Unable to mount /dev/pts."
+    echo -ne "\t- tweak to bypass bug qemu:"
+    echo "FEATURES=\"-pid-sandbox\"" >> "$WORK_DIR/$ROOT/etc/portage/make.conf" 2>> "$LOG"
+    printResult $? "Unable to insert FEATURES in make.conf."
+    echo -ne "\t- chroot"
+    #cat 2>> "$LOG" << EOF | chroot "$WORK_DIR/$ROOT"
+    chroot "$WORK_DIR/$ROOT" >> "$LOG" 2>&1 << EOF
+    $(cat "./Configs/postinst.conf")
+EOF
+    printResult 0
+#    printResult $? "Unable to chroot into $WORK_DIR/$ROOT."
 } #}}}
 
 function get_firmwares #{{{
@@ -755,9 +803,11 @@ function clean #{{{
         sync >> "$LOG" 2>&1
         printResult $? "Syncing failed !" 0
         echo -ne "\t- Unmounting $CARD: "
-        [[ 0 -eq $(mount | grep -c "$CARD") ]] || 
-                    umount "$WORK_DIR/$ROOT"/{boot,} >> "$LOG" 2>&1
-        printResult $? "Unmounting $CARD failed !" 0
+        for dir in $(mount | grep "$WORK_DIR/$ROOT" | cut -f 3 -d " " | sort -r); do 
+            umount "$dir" >> "$LOG" 2>&1 ||
+            printResult 1 "Unmounting $dir failed !" 0
+        done
+        printResult 0
         if [[ "$USE_IMG" = true && ! "$CARD" = "loopback" ]]; then
             echo -ne "\t- Destroying the virtual device $CARD: "
             losetup -d "$CARD" >> "$LOG" 2>&1
@@ -823,6 +873,8 @@ Option's list:
 \t--set-root-pw\t\tChoose your root password. You will be asked to type it.
 \t\t\t\tThe characters won't appear when you will type. The password is not stored in clear.
 \t\t\t\tIt will directly be used to generate the hash.\n
+\t--use-qemu\t\tThis will setup a qemu enironment for chrotting and compiling packages.
+\t\t\t\tWhen enabled, the firstRun script is not used.\n
 After the first boot, follow those steps:\n
 \t* emerge --sync
 \t* perl-cleaner --all
@@ -921,6 +973,7 @@ while getopts "hb:m:B:d:k:c:H:t:f:C:M:F:-:" OPTION; do #{{{
                 config-usb-tether ) USE_TETHER=true ;;
                 set-root-pw ) USE_MY_PW=true ;;
                 enable-sshd ) SSH=true ;;
+                use-qemu ) USE_QEMU=true ;;
                 help ) show_help && exit 1 ;;
                 * ) show_help && exit 1 ;;
             esac;;
@@ -967,7 +1020,12 @@ if [[ "$USE_TARB" = false ]]; then
 fi
 $POPULATE && populate
 $TUNE && tune
-$NO_ETH || firstRun_builder
+if [[ "$USE_QEMU" = true ]]; then
+    setup_qemu
+    chroot_qemu
+else
+    $NO_ETH || firstRun_builder
+fi
 $USE_TARB && create_tarball
 clean
 exit 0
