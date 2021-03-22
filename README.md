@@ -34,32 +34,9 @@ GenBerry -h
 
 ### Options list
 
-
-| Option | Argument | Values | Description |
-|:------:|:--------:|--------|-------------|
-|-b|type|0, 0W, 1, 2, 3, 3P, `4`|Type of the board: 0 *(Pi0)*, 0W *(Pi0W)*, 1 *(Pi1)*, 2 *(Pi2)*, 3 *(Pi3)*, 3P *(Pi3B+)*, 4 *(4B)*|
-|-m|dir|`/tmp/bldGenPiImg-XXXXXXXXXX`|Set the working directory.|
-|-B|branch|`rpi-X.XX.y`|Install a specific kernel branch (from rPi kernel github repository).|
-|-d|device|`/dev/mmcblk0`|Device to use for install.|
-|-k|lang|`fr`|Lang for the keymaps.|
-|-c|file|`/path/to/cfg`|Use your own kernel config file.|
-|-H|hostname|`gibolin`|Fix the hostname.|
-|-t|timezone|`Europe/Paris`|Fix the timezone.|
-|-f|filesystem|f2fs, `ext4`|Filesystem for the root partition.|
-|-C|file|`/path/to/cfg`|Use your own config.txt file.|
-|-M|size|32, `64`|Architecture 32 or 64 bits. **This apply only on rPi 3, 3P and 4**|
-|-F|file|`/path/to/cfg`|Use your own fstab file. **This only concern you if you choose the -T option.**|
-|-h| | |Display this help message.|
-|-s| | |Copy the kernel sources on the card, Beware that this will run make distclean on the actual sources.|
-|-p| | |Copy the portage tree.|
-|-i| | |Build an image to burn on the media.|
-|-T| | |Build a tarball to expand on a pre-formated media. **If you don't provide an fstab file via the -F option. You will need to install it after and tune your /boot/cmdline.txt.**|
-|-u| | |Enable serial communications. Might disable bluetooth on some boards.|
-|-U| | |Enable usb tethering. Might need some tweak on your computer. Actually only tested on Pi 0 and 0W.|
-|-S| | |Enable sshd server with root connections allowed. If ssh-add -L give a record it will be use for the connection, else use the password.|
-|-P| | |Choose your root password. You will be asked to type it. The characters won't appear when you will type. The password is not stored in clear. It will directly be used to generate the hash.|
-
-(Defaults value in the table above are `highlighted`)
+There are two types of options, the short ones which take an argument and the long ones without any arguments
+* ![Short options](../../wiki/Options#short-options)
+* ![Long options](../../wiki/Options#long-options)
 
 ### Requirements
 
@@ -95,9 +72,7 @@ sudo dd if=GenBerry_3P.img of=/dev/yoursdcard status=progress
 
 ### What to do after ?
 
-Once your card is ready, plug it in you Pi and boot. If you don't have a screen available
-you can use the -u option to connect to your pi via the uart serial interface.
-After the first boot, your pi will execute a `firstRun.start` script located in `/etc/local.d/`
+Once your card is ready, plug it in you Pi and boot. Then you have two possibilities. If you used qemu options, well, just do what you want. There's nothing more to do :). If you didn't used qemu options,  your pi will execute a `firstRun.start` script located in `/etc/local.d/`
 The content of this script is available in the ![`FIRSTRUN`](./GenBerry.cfg).
 Basically, it will run udhcpc on eth0, sync the time, emerge dhcpcd, delete itself and reboot.
 After this reboot, your pi will be available thrue eth0.
