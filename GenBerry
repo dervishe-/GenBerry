@@ -969,8 +969,8 @@ while getopts "hb:m:B:d:k:c:H:t:f:C:M:F:-:" OPTION; do #{{{
                                 CARD=loopback ;;
                 build-tarball ) USE_TARB=true
                                 CARD=tarball ;;
-                config-serial ) USE_SERIAL=true ;;
-                config-usb-tether ) USE_TETHER=true ;;
+                enable-serial ) USE_SERIAL=true ;;
+                enable-usb-tether ) USE_TETHER=true ;;
                 set-root-pw ) USE_MY_PW=true ;;
                 enable-sshd ) SSH=true ;;
                 use-qemu ) USE_QEMU=true ;;
