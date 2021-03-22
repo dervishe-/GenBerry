@@ -113,7 +113,6 @@ Then, you just will have to customize your new system :)
 * Boot sur USB
 * For Pi4 activate USB attached SCSI
 * Add userland utilities form RaspberryOS
-* Use qemu to compile on host
 
 ## Disclaimer
 
