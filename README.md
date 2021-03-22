@@ -52,18 +52,16 @@ There are two types of options, the short ones which take an argument and the lo
 
 * Create a simple sdcard for rpi4 on /dev/mmcblk0 with portage tree installed:
 ```bash
-sudo ./GenBerry -p
+sudo ./GenBerry --add-portage
 ```
 * Create an image for rPi 3B+ in 32 bit mode with f2fs portage and the kernel sources:
 ```bash
-sudo ./GenBerry -p -i -M 32 -f f2fs -b 3P -s
+sudo ./GenBerry --add-portage --build-image -M 32 -f f2fs -b 3P --add-kernel-src
 ```
 This will generate a GenBerry_3P.img file in the work dir. 
 * -M 32 means select 32 bit mode
-* -i means generate an image instead of using a rela sdcard
 * -f f2fs means use f2fs as filesystem for the root partitions (instead of ext4)
 * -b 3P means build for raspberry Pi 3B+
-* -s means copy the kernel source (it wille be a clean sources afetr a make mrproper)
 
 You can use this image after, this way:
 ```bash
