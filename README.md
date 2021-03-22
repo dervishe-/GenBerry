@@ -4,14 +4,13 @@
 
 ## Purpose
 
-GenBerry is a shell script which provide a minimal gentoo image for
-Raspberry Pi 0, 0W 1B, 2B, 3B, 3B+ and 4B in 32 or 64 bit version. You can see it as a
+GenBerry is a shell script which provide a minimal gentoo image for Raspberry Pi 0, 0W 1B, 2B, 3B, 3B+ and 4B in 32 or 64 bit version. You can see it as a
 bootable and usable stage4 image. The other boards have not been tested.
 By default, you will have the latest kernel, stage3 and portage tree. 
-You can install the system on a sdcard if you provide one or you can build an 
-image to put on the card.
-You can customize it with hostname, keyboard layout, timezone, kernel config, 
-config.txt and filesystem type. You can also enable the serial console communications.
+
+You can install the system on a ![sdcard](../../wiki/Several-ways-to-build-the-system#use-a-device) if you provide one, you can also build an ![image](../../wiki/Several-ways-to-build-the-system#create-an-image-to-burn) to put on several card or build a ![tarball](../../wiki/Several-ways-to-build-the-system#create-a-tarball) to share on a network.
+
+You can customize it with hostname, keyboard layout, timezone, kernel config, config.txt and filesystem type. You can also enable the ![serial console](../../wiki/Access-to-the-Pi#serial-console) communications or the ![usb tethering](../../wiki/Access-to-the-Pi#usb-tethering).
 
 ## What the script actually do ?
 
@@ -26,11 +25,7 @@ When all the files are where they belong, the script will tune a little the syst
 
 ### Configuration
 
-You can use the ![config file](./GenBerry.cfg) to configure the script or directly 
-with CLI options. Help is available via:
-```bash
-GenBerry -h
-```
+You can use the ![config file](./GenBerry.cfg) to configure the script or directly with CLI options.
 
 ### Options list
 
@@ -40,13 +35,12 @@ There are two types of options, the short ones which take an argument and the lo
 
 ### Requirements
 
-* For some operations, you need to have admin rights
-* A minimal working sdcard
 * An internet connection
 * A crossdev environment to compile the kernel:
     * aarch64-linux-gnu (rpi 3, 3+, 4)
     * armv7a-linux-gnueabihf (rPi 2, 3, 3+, 4)
     * armv6j-linux-gnueabihf (rpi 0, 0W, 1)
+* qemu (optional)
 
 ### Examples
 
@@ -101,6 +95,7 @@ Then, you just will have to customize your new system :)
 * https://gcc.gnu.org/onlinedocs/gcc/ARM-Options.html#ARM-Options
 * https://wiki.gentoo.org/wiki/GCC_optimization
 * https://developer.arm.com/architectures/instruction-sets/floating-point
+* https://ownyourbits.com/2018/06/13/transparently-running-binaries-from-any-architecture-in-linux-with-qemu-and-binfmt_misc/
 
 ## Todo
 
