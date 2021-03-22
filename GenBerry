@@ -594,7 +594,8 @@ function fix_network #{{{
     fi
     if [[ "$NO_WLAN" = false ]]; then
         echo -ne "\t- Fixing Network (wlan0): "
-        echo "config_wlan0=\"dhcp\"" >> "$WORK_DIR/$ROOT/etc/conf.d/net" 2>> "$LOG"
+        LCONTENT="config_wlan0=\"dhcp\"\nmodules_wlan0=\"!plug wpa_supplicant\""
+        echo -e "$LCONTENT" >> "$WORK_DIR/$ROOT/etc/conf.d/net" 2>> "$LOG"
         (
             cd "$WORK_DIR/$ROOT/etc/init.d" >> "$LOG" 2>&1 || 
                 printResult 1 "Switching to \"$WORK_DIR/$ROOT/etc/init.d\" failed"
