@@ -103,7 +103,7 @@ Then, you just will have to customize your new system :)
 * (dis|en)able some actions
 * Silent mode
 * Update kernel helper
-* Boot sur USB
+* Boot on USB
 * For Pi4 activate USB attached SCSI
 * Add userland utilities form RaspberryOS
 
