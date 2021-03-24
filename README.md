@@ -25,7 +25,7 @@ When all the files are where they belong, the script will tune a little the syst
 
 ### Configuration
 
-You can use the ![config file](./GenBerry.cfg) to configure the script or directly with CLI options.
+You can use the ![config file](./Configs/GenBerry.cfg) to configure the script or directly with CLI options.
 
 ### Options list
 
@@ -65,19 +65,15 @@ sudo dd if=GenBerry_3P.img of=/dev/yoursdcard status=progress
 ### What to do after ?
 
 Once your card is ready, plug it in you Pi and boot. Then you have two possibilities. If you used qemu options, well, just do what you want. There's nothing more to do :). If you didn't used qemu options,  your pi will execute a `firstRun.start` script located in `/etc/local.d/`
-The content of this script is available in the ![`FIRSTRUN`](./GenBerry.cfg).
-Basically, it will run udhcpc on eth0, sync the time, emerge dhcpcd, delete itself and reboot.
+The content of this script is available in the ![`FIRSTRUN`](./Configs/firstRun.start).
+Basically, it will run udhcpc on eth0, sync the time, emerge dhcpcd, and wpa_supplicant if wlan0 exists, delete itself and reboot.
 After this reboot, your pi will be available thrue eth0.
-Once you're logged in, just execute this few commands, to make the thingss proper:
+Once you're logged in, just execute this few commands, to make the things proper:
 
 ```bash
 emerge --sync
 emerge -auD --newuse @world
 emerge -av --depclean
-# If you want to use Wifi
-emerge -av wpa_supplicant
-rc-update add wpa_supplicant default
-# reboot
 shutdown -r now
 ```
 Then, you just will have to customize your new system :)
