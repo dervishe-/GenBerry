@@ -10,7 +10,7 @@
 #
 
 #{{{Parameters
-CONFIG_FILE="./GenBerry.cfg"
+CONFIG_DIR="./Configs"
 CHOICE_MADE=false
 GET_CONTENT=false
 PREPARE=false
@@ -35,7 +35,7 @@ WP_TMP=""
 ROOT_PW_HASH=""
 
 shopt -s extglob
-source "$CONFIG_FILE"
+source "$CONFIG_DIR/GenBerry.cfg"
 #}}}
 
 function fix_actions #{{{
@@ -273,7 +273,7 @@ function chroot_qemu #{{{
     echo -ne "\t- execute tasks in the chroot: "
     #cat 2>> "$LOG" << EOF | chroot "$WORK_DIR/$ROOT"
     chroot "$WORK_DIR/$ROOT" >> "$LOG" 2>&1 << EOF
-    $(cat "./Configs/postinst.conf")
+    $(cat "$CONFIG_DIR/postinst.conf")
 EOF
     printResult $? "Some tasks failed in the chroot.\nCheck the logs."
     echo -ne "\t- unmount tools: "
@@ -478,7 +478,7 @@ function build_kernel #{{{
         echo -ne "\t- Building: "
         IMG="zImage"
         [[ $MODE -eq 64 ]] && IMG="Image"
-        ARCH="$MYARCH" CROSS_COMPILE="$AARCH-" make -j$NBR_CORE "$IMG" modules dtbs >> "$LOG" 2>&1
+        ARCH="$MYARCH" CROSS_COMPILE="$AARCH-" make -j"$NBR_CORE" "$IMG" modules dtbs >> "$LOG" 2>&1
         printResult $? "Kernel compilation failed !"
     )
 } #}}}
@@ -731,7 +731,7 @@ function fstab_builder #{{{
 function firstRun_builder #{{{
 {
     echo -ne "\t- Installing firstRun script in /etc/local.d: "
-    echo -e "$FIRSTRUN" > "$WORK_DIR/$ROOT/etc/local.d/firstRun.start" 2>> "$LOG" ||
+    cp {"$CONFIG_DIR","$WORK_DIR/$ROOT/etc/local.d"}/firstRun.start 2>> "$LOG" ||
         printResult 1 "Failed to copy the content in the file"
     chmod +x "$WORK_DIR/$ROOT/etc/local.d/firstRun.start" >> "$LOG" 2>&1
     printResult $? "Failed to activate the script"
@@ -854,7 +854,8 @@ function show_help #{{{
 Option's list:
 \t-h\t\tDisplay this help message\n
 \t-b <type>\tType of the board:
-\t\t\t0 for raspberryPi 0
+\t\t\t0 for raspberryPi Zero
+\t\t\t0W for raspberryPi ZeroW
 \t\t\t1 for raspberryPi 1 family
 \t\t\t2 for raspberryPi 2 family
 \t\t\t3 for raspberryPi 3B
@@ -903,13 +904,6 @@ Option's list:
 \t\t\t\tIt will directly be used to generate the hash.\n
 \t--use-qemu\t\tThis will setup a qemu enironment for chrotting and compiling packages.
 \t\t\t\tWhen enabled, the firstRun script is not used.\n
-After the first boot, follow those steps:\n
-\t* emerge --sync
-\t* perl-cleaner --all
-\t* emerge -vauD --newuse @world
-\t* emerge -a --depclean
-\t* emerge -vaD wpa_supplicant # If you want to use wifi
-\t* shutdown -r now
 "
 } #}}}
 
@@ -957,7 +951,7 @@ while getopts "hb:m:B:d:k:c:H:t:f:C:M:F:w:-:" OPTION; do #{{{
     case $OPTION in
         h ) show_help && exit 0 ;;
         b ) RPI_VERSION="$OPTARG"
-            if ! [[ -f "./Configs/rpi${RPI_VERSION}.conf" ]]; then
+            if ! [[ -f "$CONFIG_DIR/rpi${RPI_VERSION}.conf" ]]; then
                 echo "Error: $RPI_VERSION is not a valid board."
                 exit 1
             fi ;;
@@ -1014,7 +1008,7 @@ while getopts "hb:m:B:d:k:c:H:t:f:C:M:F:w:-:" OPTION; do #{{{
     esac
 done #}}}
 
-source "./Configs/rpi${RPI_VERSION}.conf"
+source "$CONFIG_DIR/rpi${RPI_VERSION}.conf"
 [[ -n "$MY_CFG" ]] && KERNEL_CONFIG="olddefconfig"
 
 if [[ "$ROOT_FS" = "f2fs" ]]; then
@@ -1056,8 +1050,8 @@ $TUNE && tune
 if [[ "$USE_QEMU" = true ]]; then
     setup_qemu
     chroot_qemu
-else
-    $NO_ETH || firstRun_builder
+elif [[ "$NO_ETH" = false ]] || [[ "$NO_WLAN" = false ]]; then
+    firstRun_builder
 fi
 $USE_TARB && create_tarball
 clean
