@@ -73,14 +73,14 @@ sudo ./GenBerry --add-portage
 ```bash
 sudo ./GenBerry --add-portage --build-image -M 32 -f f2fs -b 3P --add-kernel-src
 ```
-This will generate a GenBerry_3P.img file in the work dir. 
+This will generate a GenBerry_3P-32.img file in the work dir. 
 * -M 32 means select 32 bit mode
 * -f f2fs means use f2fs as filesystem for the root partitions (instead of ext4)
 * -b 3P means build for raspberry Pi 3B+
 
 You can use this image after, this way:
 ```bash
-sudo dd if=GenBerry_3P.img of=/dev/yoursdcard status=progress
+sudo dd if=GenBerry_3P-32.img of=/dev/yoursdcard status=progress
 ```
 
 ### The first boot
