@@ -4,43 +4,63 @@
 
 ## Purpose
 
-GenBerry is a shell script which provide a minimal gentoo image for Raspberry Pi 0, 0W 1B, 2B, 3B, 3B+ and 4B in 32 or 64 bit version. You can see it as a
-bootable and usable stage4 image. The other boards have not been tested.
-By default, you will have the latest kernel, stage3 and portage tree. 
+GenBerry is a shell script which provide a minimal gentoo image for Raspberry Pi 0, 
+0W 1B, 2B, 3B, 3B+ and 4B in 32 or 64 bit version. You can see it as a
+bootable and usable stage4 image. The other boards have not been tested yet.
+By default, you will have the latest kernel and stage3. 
+It can also use qemu in order to performs further installation and configuration 
+tasks.
 
-You can install the system on a ![sdcard](../../wiki/Several-ways-to-build-the-system#use-a-device) if you provide one, you can also build an ![image](../../wiki/Several-ways-to-build-the-system#create-an-image-to-burn) to put on several card or build a ![tarball](../../wiki/Several-ways-to-build-the-system#create-a-tarball) to share on a network.
+You can install the system directly on a ![device](../../wiki/Several-ways-to-build-the-system#use-a-device) 
+or build an ![image](../../wiki/Several-ways-to-build-the-system#create-an-image-to-burn) 
+to put on several card or build a ![tarball](../../wiki/Several-ways-to-build-the-system#create-a-tarball) 
+to share on a network.
 
-You can customize it with hostname, keyboard layout, timezone, kernel config, config.txt and filesystem type. You can also enable the ![serial console](../../wiki/Access-to-the-Pi#serial-console) communications or the ![usb tethering](../../wiki/Access-to-the-Pi#usb-tethering).
+You can customize it with hostname, keyboard layout, timezone, kernel config, 
+config.txt and filesystem type. You can also enable the 
+![serial console](../../wiki/Access-to-the-Pi#serial-console) communications or 
+the ![usb tethering](../../wiki/Access-to-the-Pi#usb-tethering).
 
-## What the script actually do ?
+You can use it with any Linux distribution, BSD or macOS X except for functions 
+requiring qemu which need a gentoo based system.
 
-If you don't provide any workplace (`-m` option), the script will create a new one in /tmp. 
-By default, it will ask you an sdcard plugged. It will retrieve the latests kernel sources,
-stage3, portage tree and firmwares from their respectives repository.
-It will configure and build the kernel, modules and device tree. Then it will prepare 
-the card (partitions, format) and expand the various archives on it.
-When all the files are where they belong, the script will tune a little the system for you.
+**Take a tour on the ![wiki](../../wiki) (always a wiP) for more specific documentation.**
 
-## How to use it
 
-### Configuration
-
-You can use the ![config file](./Configs/GenBerry.cfg) to configure the script or directly with CLI options.
-
-### Options list
-
-There are two types of options, the short ones which take an argument and the long ones without any arguments
-* ![Short options](../../wiki/Options#short-options)
-* ![Long options](../../wiki/Options#long-options)
-
-### Requirements
+## Requirements
 
 * An internet connection
 * A crossdev environment to compile the kernel:
     * aarch64-linux-gnu (rpi 3, 3+, 4)
     * armv7a-linux-gnueabihf (rPi 2, 3, 3+, 4)
     * armv6j-linux-gnueabihf (rpi 0, 0W, 1)
-* qemu (optional)
+* qemu static installed and packaged (optional: here you need a gentoo based system)
+
+
+## Installation
+
+You have to clone the repository and switch to the root of the project:
+```bash
+git clone https://github.com/dervishe-/GenBerry.git
+cd ./GenBerry
+```
+
+
+### Configuration
+
+GenBerry comes with several configuration files located in the `GenBErry/Configs` 
+directory. As GenBerry needs those files to perform its tasks, if you want to execute 
+it outside de `GenBerry` directory you will have to specify the Configs directory location.
+
+You can use the ![config file](./Configs/GenBerry.cfg) to configure the script 
+or directly with CLI options.
+
+### Options list
+
+There are two types of options, the short ones which take an argument and the long 
+ones without any arguments
+* ![Short options](../../wiki/Options#short-options)
+* ![Long options](../../wiki/Options#long-options)
 
 ### Examples
 
@@ -62,12 +82,22 @@ You can use this image after, this way:
 sudo dd if=GenBerry_3P.img of=/dev/yoursdcard status=progress
 ```
 
-### What to do after ?
+### The first boot
 
-Once your card is ready, plug it in you Pi and boot. Then you have two possibilities. If you used qemu options, well, just do what you want. There's nothing more to do :). If you didn't used qemu options,  your pi will execute a `firstRun.start` script located in `/etc/local.d/`
-The content of this script is available in the ![`FIRSTRUN`](./Configs/firstRun.start).
-Basically, it will run udhcpc on eth0, sync the time, emerge dhcpcd, and wpa_supplicant if wlan0 exists, delete itself and reboot.
-After this reboot, your pi will be available thrue eth0.
+Once your card is ready, plug it in you Pi and boot. Then you have two possibilities:
+* If you used qemu options, well, just do what you want. There's nothing more to do :). 
+* If you didn't used qemu options,  your pi will execute a `firstRun.start` script 
+located in `/etc/local.d/`
+The content of this script is available ![`here`](./Configs/firstRun.start).
+Basically, it will run udhcpc on eth0, sync the time, emerge dhcpcd, and wpa_supplicant 
+if wlan0 exists, delete itself and reboot.
+
+**BEWARE: This part of the first boot could be very very long depending of your 
+board as firstRun.start emerge some packages. Let the things go quietly at its end
+;) You can follow live what's going on with the log file (tail -f ...)** 
+
+After this reboot, your pi will be available thrue eth0 or wlan0 if you gave a 
+`wpa_supplicant.conf` in option.
 Once you're logged in, just execute this few commands, to make the things proper:
 
 ```bash
@@ -77,6 +107,14 @@ emerge -av --depclean
 shutdown -r now
 ```
 Then, you just will have to customize your new system :)
+
+
+## Participate
+
+Do not hesitate to fill a ticket if you have suggestions, bug reports, found the 
+documentation not clear, or saw english faults (as you can read, my english is 
+far from perfect ;) )
+
 
 ## Sources
 
@@ -93,19 +131,23 @@ Then, you just will have to customize your new system :)
 * https://developer.arm.com/architectures/instruction-sets/floating-point
 * https://ownyourbits.com/2018/06/13/transparently-running-binaries-from-any-architecture-in-linux-with-qemu-and-binfmt_misc/
 
+
 ## Todo
 
 * Change partitions scheme
-* (dis|en)able some actions
 * Silent mode
 * Update kernel helper
 * Boot on USB
 * For Pi4 activate USB attached SCSI
 * Add userland utilities form RaspberryOS
+* Install part
+* Customize post installation tasks to allow more specific image creation
+
 
 ## Disclaimer
 
 Of course, this script is given without any warantly. Use it at your own risks.
+
 
 ## Credits
 
