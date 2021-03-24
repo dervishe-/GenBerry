@@ -48,9 +48,10 @@ cd ./GenBerry
 
 ### Configuration
 
-GenBerry comes with several configuration files located in the `GenBErry/Configs` 
+GenBerry comes with several configuration files located in the `GenBerry/Configs` 
 directory. As GenBerry needs those files to perform its tasks, if you want to execute 
-it outside de `GenBerry` directory you will have to specify the Configs directory location.
+it outside de `GenBerry` directory you will have to specify the Configs directory location
+![here](./GenBerry#L13).
 
 You can use the ![config file](./Configs/GenBerry.cfg) to configure the script 
 or directly with CLI options.
