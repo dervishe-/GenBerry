@@ -133,27 +133,18 @@ far from perfect ;) )
 <<<<<<< HEAD
 * https://ownyourbits.com/2018/06/13/transparently-running-binaries-from-any-architecture-in-linux-with-qemu-and-binfmt_misc/
 
-=======
->>>>>>> master
 
 ## Todo
 
 * Change partitions scheme
 * Silent mode
 * Update kernel helper
-<<<<<<< HEAD
 * Boot on USB
 * For Pi4 activate USB attached SCSI
 * Add userland utilities form RaspberryOS
 * Install part
 * Customize post installation tasks to allow more specific image creation
 
-=======
-* Boot sur USB
-* For Pi4 activate USB attached SCSI
-* Add userland utilities form RaspberryOS
-* Use qemu to compile on host
->>>>>>> master
 
 ## Disclaimer
 
