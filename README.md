@@ -130,7 +130,6 @@ far from perfect ;) )
 * https://gcc.gnu.org/onlinedocs/gcc/ARM-Options.html#ARM-Options
 * https://wiki.gentoo.org/wiki/GCC_optimization
 * https://developer.arm.com/architectures/instruction-sets/floating-point
-<<<<<<< HEAD
 * https://ownyourbits.com/2018/06/13/transparently-running-binaries-from-any-architecture-in-linux-with-qemu-and-binfmt_misc/
 
 
