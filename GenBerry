@@ -29,6 +29,7 @@ NO_ETH=false
 NO_WLAN=false
 USE_SERIAL=false
 USE_TETHER=false
+USE_VC=true
 SSH=false
 DEL_WP=false
 WP_TMP=""
@@ -793,7 +794,21 @@ function tune #{{{
         printResult $? "inittab modification failed !"
     fi
 
+    if [[ "$USE_VC" = true ]]; then
+        echo -ne "\t- Configure vc4: "
+        echo -e "$VC_CFG" >> "$WORK_DIR/$ROOT/boot/config.txt" 2>> "$LOG"
+        printResult $? "Add options failed !"
+    else
+        echo -ne "\t- Fixing video memory: "
+        echo "mem=16" >> "$WORK_DIR/$ROOT/boot/config.txt" 2>> "$LOG"
+        printResult $? "Add options failed !"
+    fi
+
     echo -ne "\t- Tuning make.conf: "
+    if [[ "$USE_VC" = true ]]; then
+        echo -e "VIDEO_CARDS=\"$VC\"" >> "$WORK_DIR/$ROOT/etc/portage/make.conf" 2> "$LOG" ||
+            printResult 0 "Fixing VIDEO_CARDS value failed !"
+    fi
     sed -E -i "s|^(CFLAGS.*)$|CFLAGS=\"$MCFLAGS\"\nMAKEOPTS=\"-j$NB_JOBS\"|" \
                         "$WORK_DIR/$ROOT/etc/portage/make.conf" >> "$LOG" 2>&1
     printResult $? "Fixing CFLAGS and MAKEOPTS failed !"
