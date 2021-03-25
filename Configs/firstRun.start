@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+busybox udhcpc -i eth0
+rc-service busybox-ntpd restart
+if ifconfig wlan0 > /dev/null 2>&1; then
+    emerge -uD --newuse @world
+    emerge wpa_supplicant
+    rc-update add wpa_supplicant default
+fi
+emerge dhcpcd
+rc-update add dhcpcd default
+rm /etc/local.d/firstRun.start
+reboot
