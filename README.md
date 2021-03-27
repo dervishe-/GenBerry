@@ -142,6 +142,8 @@ far from perfect ;) )
 * For Pi4 activate USB attached SCSI
 * Add userland utilities form RaspberryOS
 * Install part
+* PiDP8 template
+* Access point Template
 
 
 ## Disclaimer
