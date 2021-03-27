@@ -11,6 +11,7 @@
 
 #{{{Parameters
 CONFIG_DIR="./Configs"
+TPL_DIR="./Templates"
 CHOICE_MADE=false
 GET_CONTENT=false
 PREPARE=false
@@ -272,9 +273,10 @@ function chroot_qemu #{{{
     echo "FEATURES=\"-pid-sandbox\"" >> "$WORK_DIR/$ROOT/etc/portage/make.conf" 2>> "$LOG"
     printResult $? "Unable to insert FEATURES in make.conf."
     echo -ne "\t- execute tasks in the chroot: "
-    #cat 2>> "$LOG" << EOF | chroot "$WORK_DIR/$ROOT"
     chroot "$WORK_DIR/$ROOT" >> "$LOG" 2>&1 << EOF
-    $(cat "$CONFIG_DIR/postinst.conf")
+    $(cat "$TPL_DIR/default")
+    $(test -n "$TPL_FILE" && cat "$TPL_FILE")
+    exit
 EOF
     printResult $? "Some tasks failed in the chroot.\nCheck the logs."
     echo -ne "\t- unmount tools: "
@@ -751,6 +753,14 @@ function tune #{{{
         cp "$FSTAB_FILE" "$WORK_DIR/$ROOT/etc/fstab" >> "$LOG" 2>&1
         printResult $? "Copy failed !"
     fi
+    echo -ne "\t- Fixing locales: "
+    echo "" > "$WORK_DIR/$ROOT/etc/locale.gen" >> "$LOG" 2>&1 ||
+        printResult 1 "Unable to clean locale.gen"
+    for MY_LOCALE in "${LOCALES[@]}"; do
+        echo "$MY_LOCALE" >> "$WORK_DIR/$ROOT/etc/locale.gen" 2>> "$LOG" ||
+            printResult 1 "Unable to add: $loc"
+    done
+    printResult 0 ""
     echo -ne "\t- Tuning cmdline.txt: "
     if [[ "$USE_TARB" = true && "$USE_MY_FSTAB" = false ]]; then
         echo "root=YOUR_ROOT_PARTITION_HERE rootfstype=YOUR_ROOT_FS_HERE rootwait" > "$WORK_DIR/$ROOT/boot/cmdline.txt"
@@ -865,6 +875,8 @@ function clean #{{{
 
 function show_help #{{{
 {
+    local LS_TPL
+    LS_TPL=$(ls -x $TPL_DIR | sed "s/default *//")
     echo -e "usage: ${0#*/} <options>
 Option's list:
 \t-h\t\tDisplay this help message\n
@@ -901,6 +913,8 @@ Option's list:
 \t\t\tActual value: $MODE\n
 \t-F <file>\tUse your own fstab file.
 \t\t\tOnly for use in conjonction with the -T option.\n
+\t-T <template>\tUse a template to build a specific machine.
+\t\t\tListe: $LS_TPL.\n
 \t--add-kernel-src\tCopy the kernel sources on the card,
 \t\t\t\tBeware that this will run make distclean on the actual sources.
 \t\t\t\tActual value is \"$MOVE_KRN_SRC\"\n
@@ -962,7 +976,7 @@ function get_password #{{{
 KRN_VERSION=$(git ls-remote "$KERNEL" | grep -v "pull\|patch" | grep head | 
             cut -d '/' -f 3 | grep "^rpi-[0-9].*y$" | sort -rV | head -n 1)
 
-while getopts "hb:m:B:d:k:c:H:t:f:C:M:F:w:-:" OPTION; do #{{{
+while getopts "hb:m:B:d:k:c:H:t:f:C:M:F:w:T:-:" OPTION; do #{{{
     case $OPTION in
         h ) show_help && exit 0 ;;
         b ) RPI_VERSION="$OPTARG"
@@ -1004,6 +1018,11 @@ while getopts "hb:m:B:d:k:c:H:t:f:C:M:F:w:-:" OPTION; do #{{{
                 exit 1
             fi
             WPA_SUPP_FILE=$(readlink -f "$OPTARG") ;;
+        T ) if ! [[ -f "$TPL_DIR/$OPTARG" ]]; then
+                echo "$OPTARG is not a template."
+                exit 1
+            fi
+            TPL_FILE="$TPL_DIR/$OPTARG" ;;
         - ) case $OPTARG in
                 add-kernel-src ) MOVE_KRN_SRC=true ;;
                 add-portage ) ADD_PORTAGE=true ;;
