@@ -143,7 +143,8 @@ far from perfect ;) )
 * Add userland utilities form RaspberryOS
 * Install part
 * PiDP8 template
-* Access point Template
+* Access point template
+* Better sources managment for the rpi firmwares
 
 
 ## Disclaimer
