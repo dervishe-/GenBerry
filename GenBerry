@@ -19,7 +19,7 @@ BUILDK=false
 POPULATE=false
 TUNE=false
 MOVE_KRN_SRC=false
-ADD_PORTAGE=false
+ADD_PORTAGE=true
 MY_CFG_TXT=false
 USE_MY_FSTAB=false
 USE_IMG=false
@@ -1025,7 +1025,7 @@ while getopts "hb:m:B:d:k:c:H:t:f:C:M:F:w:T:-:" OPTION; do #{{{
             TPL_FILE="$TPL_DIR/$OPTARG" ;;
         - ) case $OPTARG in
                 add-kernel-src ) MOVE_KRN_SRC=true ;;
-                add-portage ) ADD_PORTAGE=true ;;
+                no-portage ) ADD_PORTAGE=false ;;
                 build-image ) USE_IMG=true
                                 CARD=loopback ;;
                 build-tarball ) USE_TARB=true

@@ -2,8 +2,9 @@
 locale-gen
 busybox udhcpc -i eth0
 rc-service busybox-ntpd restart
-if ifconfig wlan0 > /dev/null 2>&1; then
-    emerge -uD --newuse @world
+emerge -uD --newuse @world
+# If you setup a wpa config
+if [[ -f /etc/wpa_supplicant/wpa_supplicant.conf ]]; then
     emerge wpa_supplicant
     rc-update add wpa_supplicant default
 fi
