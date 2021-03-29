@@ -18,8 +18,8 @@ to share on a network.
 
 You can customize it with hostname, keyboard layout, timezone, kernel config, 
 config.txt and filesystem type. You can also enable the 
-![serial console](../../wiki/Access-to-the-Pi#serial-console) communications or 
-the ![usb tethering](../../wiki/Access-to-the-Pi#usb-tethering).
+![serial console](../../wiki/Networking#serial-console) communications or 
+the ![usb tethering](../../wiki/Networking#usb-tethering).
 
 You can use it with any Linux distribution, BSD or macOS X except for functions 
 requiring qemu which need a gentoo based system.
