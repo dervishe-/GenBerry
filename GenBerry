@@ -138,6 +138,7 @@ function announce #{{{
 function test_requirements #{{{
 {
     local SIZE_AVAIL
+    local QMU
     echo "* Checking requirements:"
     echo -en "\t- Root permissions: "
     printResult "$([[ $(id -u) -eq 0 ]]; echo $?)" "You need to be root."
@@ -172,6 +173,13 @@ function test_requirements #{{{
     echo -en "\t- Cross compilation tools: "
     which "${AARCH}-gcc" >> "$LOG" 2>&1
     printResult $?  "You need to install the $AARCH compiler."
+    if [[ "$USE_QEMU" = true ]]; then
+        echo -en "\t- qemu: "
+        QMU="qemu-aarch64"
+        [[ "$MODE" = 64 ]] || QMU="qemu-arm"
+        which "$QMU" >> "$LOG" 2>&1
+        printResult $?  "You need to install $QMU."
+    fi
 } #}}}
 
 function prepare_card #{{{
