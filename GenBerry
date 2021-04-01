@@ -159,12 +159,9 @@ function test_requirements #{{{
         gpg --keyserver "$KEY_SERVER" --recv-keys "$GLRE_KEY" >> "$LOG" 2>&1
     printResult $? "You need to install the key: $GLRE_KEY."
     if [[ "$USE_IMG" = false && "$USE_TARB" = false ]]; then
-        echo -en "\t- Media inserted: "
-        test -b "$CARD"
-        printResult $? "You will need an sdcard inserted."
         echo -en "\t- Media not mounted: "
         [[ $(mount | grep -c "${CARD}") -eq 0 ]]
-        printResult $? "${CARD} already mounted."
+        printResult $? "Check your media, ${CARD} is already mounted."
     elif [[ "$USE_TARB" = true ]]; then
         echo -en "\t- fstab file availability: "
         [[ -n "$FSTAB_FILE" ]]
@@ -981,8 +978,9 @@ function get_password #{{{
 } #}}}
 
 # Retrieve the last kernel version
-KRN_VERSION=$(git ls-remote "$KERNEL" | grep -v "pull\|patch" | grep head | 
-            cut -d '/' -f 3 | grep "^rpi-[0-9].*y$" | sort -rV | head -n 1)
+LST_KRN_VERSION=$(git ls-remote "$KERNEL" | grep -v "pull\|patch" | grep head | 
+            cut -d '/' -f 3 | grep "^rpi-[0-9].*y$" | sort -rV)
+KRN_VERSION=$(echo "$LST_KRN_VERSION" | head -n 1)
 
 while getopts "hb:m:B:d:k:c:H:t:f:C:M:F:w:T:-:" OPTION; do #{{{
     case $OPTION in
@@ -992,18 +990,31 @@ while getopts "hb:m:B:d:k:c:H:t:f:C:M:F:w:T:-:" OPTION; do #{{{
                 echo "Error: $RPI_VERSION is not a valid board."
                 exit 1
             fi ;;
-        m ) WP_TMP="$OPTARG" ;;
-        B ) KRN_VERSION="$OPTARG" ;;
-        d ) CARD="$OPTARG" ;;
-        k ) KEYMAPS="$OPTARG" ;;
+        m ) [[ -n "$OPTARG" ]] && WP_TMP="$OPTARG" ;;
+        B ) if [[ -z "$OPTARG" ]] || 
+                    ! echo "$LST_KRN_VERSION" | grep -q "$OPTARG"; then
+                echo "$OPTARG is not a valid branch."
+                exit 1
+            fi
+            KRN_VERSION="$OPTARG" ;;
+        d ) if ! [[ -b "$OPTARG" ]]; then
+                echo "$OPTARG is not a valid device."
+                exit 1
+            fi
+            CARD="$OPTARG" ;;
+        k ) [[ -n "$OPTARG" ]] && KEYMAPS="$OPTARG" ;;
         c ) if ! [[ -f "$OPTARG" ]]; then
                 echo "$OPTARG is not a file."
                 exit 1
             fi
             MY_CFG=$(readlink -f "$OPTARG") ;;
-        H ) HN="$OPTARG" ;;
-        t ) TZ="$OPTARG" ;;
-        f ) ROOT_FS="$OPTARG" ;;
+        H ) [[ -n "$OPTARG" ]] && HN="$OPTARG" ;;
+        t ) [[ -n "$OPTARG" ]] && TZ="$OPTARG" ;;
+        f ) if [[ "$OPTARG" != "ext4" && "$OPTARG" != "f2fs" ]]; then
+                echo "-f allowed values are: ext4 and f2fs."
+                exit 1
+            fi
+            ROOT_FS="$OPTARG" ;;
         C ) if ! [[ -f "$OPTARG" ]]; then
                 echo "$OPTARG is not a file."
                 exit 1
