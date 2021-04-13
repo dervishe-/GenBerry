@@ -141,9 +141,9 @@ far from perfect ;) )
 * Boot on USB
 * For Pi4 activate USB attached SCSI
 * Add userland utilities form RaspberryOS
-* Install part
-* Customize post installation tasks to allow more specific image creation
-
+* Install the script
+* Access point template
+* Better sources managment for the rpi firmwares
 
 ## Disclaimer
 

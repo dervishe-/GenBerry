@@ -1,0 +1,50 @@
+# Get dependencies
+emerge -uD libsdl2 libpcap readline app-misc/screen rpcbind sudo
+
+# Create the pi user required by the pidp11
+useradd -m -G users,wheel,audio,adm,dialout,cdrom,video,input -s /bin/bash pi
+sed -E -i "s/^(# )?(\%wheel.*)$/\2/" /etc/sudoers
+
+# Get server
+mkdir /opt/pidp11
+cd /opt/pidp11
+wget https://www3.ispnet.net/pidp11/pidp11.tar.gz
+tar -xvf pidp11.tar.gz
+ln -s /opt/pidp11/etc/pdp.sh /home/pi/pdp.sh
+echo "/home/pi/pdp.sh" >> /home/pi/.bash_profile
+
+# Little workaround because actually it's the version 7 which is required by pidp11
+ln -s /lib/libreadline.so.{8,7}
+#Create service launcher (start/stop) in /etc/local.d
+cat <<- EOF > /etc/local.d/pidp11.start
+#!/bin/bash
+procs=\`screen -ls pidp11 | egrep '[0-9]+\.pidp11' | wc -l\`
+if [[ \$procs -gt 0 ]]; then
+    echo "PiDP-11 is already running, not starting again." >&2
+    exit 0
+fi
+cd /opt/pidp11/bin
+screen -dmS pidp11 ./pidp11.sh
+exit 0
+EOF
+chmod +x /etc/local.d/pidp11.start
+
+cat <<- EOF > /etc/local.d/pidp11.stop
+#!/bin/bash
+procs=\`screen -ls pidp11 | egrep '[0-9]+\.pidp11' | wc -l\`
+if [[ \$procs -eq 0 ]]; then
+    echo "PiDP-11 is not running." >&2
+    exit 0
+fi
+screen -S pidp11 -X quit
+exit 0
+EOF
+chmod +x /etc/local.d/pidp11.stop
+
+# Installing various systems for pidp11
+wget https://www3.ispnet.net/pidp11/systems.tar.gz
+tar -xvf systems.tar.gz
+
+# Little house-keeping
+rm {pidp11,systems}.tar.gz
+rm /var/cache/distfiles/*

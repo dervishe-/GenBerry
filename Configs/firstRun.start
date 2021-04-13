@@ -1,12 +1,22 @@
 #!/usr/bin/env bash
-busybox udhcpc -i eth0
-rc-service busybox-ntpd restart
-if ifconfig wlan0 > /dev/null 2>&1; then
+locale-gen
+echo "media-libs/raspberrypi-userland-bin raspberrypi-videocore-bin" >> /etc/portage/package.license
+[[ $(ls /sys/class/net/eth0 2> /dev/null) ]] && busybox udhcpc -i eth0
+if [[ $(ping -c 3 1.1.1.1) ]]; then # via usb0 or eth0
+    rc-service busybox-ntpd restart
     emerge -uD --newuse @world
-    emerge wpa_supplicant
-    rc-update add wpa_supplicant default
+    emerge raspberrypi-userland-bin
+    if [[ $(ls /sys/class/net/eth0 2> /dev/null) ]] || 
+            [[ $(ls /sys/class/net/wlan0 2> /dev/null) ]]; then
+        emerge dhcpcd
+        rc-update add dhcpcd default
+    fi
+    if [[ $(ls /sys/class/net/wlan0 2> /dev/null) ]]; then
+        emerge wpa_supplicant
+        rc-update add wpa_supplicant default
+    fi
 fi
-emerge dhcpcd
-rc-update add dhcpcd default
+
+#End
 rm /etc/local.d/firstRun.start
 reboot

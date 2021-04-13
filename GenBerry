@@ -11,6 +11,7 @@
 
 #{{{Parameters
 CONFIG_DIR="./Configs"
+TPL_DIR="./Templates"
 CHOICE_MADE=false
 GET_CONTENT=false
 PREPARE=false
@@ -18,7 +19,7 @@ BUILDK=false
 POPULATE=false
 TUNE=false
 MOVE_KRN_SRC=false
-ADD_PORTAGE=false
+ADD_PORTAGE=true
 MY_CFG_TXT=false
 USE_MY_FSTAB=false
 USE_IMG=false
@@ -36,6 +37,7 @@ WP_TMP=""
 ROOT_PW_HASH=""
 
 shopt -s extglob
+# shellcheck source=./Configs/GenBerry.cfg
 source "$CONFIG_DIR/GenBerry.cfg"
 #}}}
 
@@ -95,14 +97,18 @@ function announce #{{{
     else
         echo -e "* Default root password: \e[1;33m$ROOT_PW\e[0m"
     fi
+    test -n "$USER_NAME" &&
+        echo -e "* User to add: \e[1;33m$USER_NAME\e[0m"
     echo -e "* Kernel version: \e[1;33m$KRN_VERSION\e[0m"
+    test -n "$TPL_FILE" &&
+        echo -e "* Template to build: \e[1;33m$TPL_FILE\e[0m"
     $USE_QEMU && 
         echo "* qemu will be used for building stuff locally."
     $USE_IMG && 
         echo -e "* Location of the image: \e[1;33m$WORK_DIR/$FILE_PREFIX$RPI_VERSION-$MODE.img\e[0m"
     $USE_TARB && 
         echo -e "* Location of the tarball: \e[1;33m$WORK_DIR/$FILE_PREFIX$RPI_VERSION-$MODE.tar.xz\e[0m"
-    [[ -n $MY_CFG ]] && echo "* Kernel configuration file used: \e[1;33m$MY_CFG\e[0m"
+    test -n "$MY_CFG" && echo "* Kernel configuration file used: \e[1;33m$MY_CFG\e[0m"
     $USE_MY_FSTAB && echo -e "* fstab file used: \e[1;33m$FSTAB_FILE\e[0m"
     $MY_CFG_TXT && echo "* We use your own config.txt"
     echo -e "* RaspberryPi version: \e[1;33m$RPI_VERSION\e[0m"
@@ -112,7 +118,7 @@ function announce #{{{
     echo -e "* Timezone: \e[1;33m$TZ\e[0m"
     echo -e "* Keymaps: \e[1;33m$KEYMAPS\e[0m"
     $ADD_PORTAGE && echo "* Last portage tree will be added"
-    [[ -n $WPA_SUPP_FILE ]] && echo -e "* wpa_supplicant.conf used: \e[1;33m$WPA_SUPP_FILE\e[0m"
+    test -n "$WPA_SUPP_FILE" && echo -e "* wpa_supplicant.conf used: \e[1;33m$WPA_SUPP_FILE\e[0m"
     $USE_TETHER && 
         {
             echo "* USB tethering will be configured"
@@ -137,7 +143,8 @@ function announce #{{{
 function test_requirements #{{{
 {
     local SIZE_AVAIL
-    echo "* Checking requirements:"
+    local QMU
+    echo "* Check requirements:"
     echo -en "\t- Root permissions: "
     printResult "$([[ $(id -u) -eq 0 ]]; echo $?)" "You need to be root."
     for REQ in "${DEPENDS[@]}"; do
@@ -153,16 +160,13 @@ function test_requirements #{{{
     printResult "$([[ $SIZE_NEED -lt $SIZE_AVAIL ]]; echo $?)" \
                                                 "You don't have enough space."
     echo -en "\t- Gentoo public key: "
-    [[ $(gpg --list-key "$GLRE_KEY" >> "$LOG" 2>&1) ]] || 
+    gpg --list-key "$GLRE_KEY" >> "$LOG" 2>&1 || 
         gpg --keyserver "$KEY_SERVER" --recv-keys "$GLRE_KEY" >> "$LOG" 2>&1
     printResult $? "You need to install the key: $GLRE_KEY."
     if [[ "$USE_IMG" = false && "$USE_TARB" = false ]]; then
-        echo -en "\t- Media inserted: "
-        test -b "$CARD"
-        printResult $? "You will need an sdcard inserted."
         echo -en "\t- Media not mounted: "
         [[ $(mount | grep -c "${CARD}") -eq 0 ]]
-        printResult $? "${CARD} already mounted."
+        printResult $? "Check your media, ${CARD} is already mounted."
     elif [[ "$USE_TARB" = true ]]; then
         echo -en "\t- fstab file availability: "
         [[ -n "$FSTAB_FILE" ]]
@@ -171,15 +175,22 @@ function test_requirements #{{{
     echo -en "\t- Cross compilation tools: "
     which "${AARCH}-gcc" >> "$LOG" 2>&1
     printResult $?  "You need to install the $AARCH compiler."
+    if [[ "$USE_QEMU" = true ]]; then
+        echo -en "\t- qemu: "
+        QMU="qemu-aarch64"
+        [[ "$MODE" = 64 ]] || QMU="qemu-arm"
+        which "$QMU" >> "$LOG" 2>&1
+        printResult $?  "You need to install $QMU."
+    fi
 } #}}}
 
 function prepare_card #{{{
 {
     local FILE
     local PART
-    echo "* Preparing card:"
+    echo "* Prepare card:"
     if [[ "$USE_IMG" = true ]]; then
-        echo -ne "\t- Creating the virtual disk: "
+        echo -ne "\t- Create the virtual disk: "
         FILE="$WORK_DIR/$FILE_PREFIX$RPI_VERSION-$MODE.img"
         dd if=/dev/zero of="$FILE" bs="$BLOC_SIZE" count="$NBR_BLOCS" >> "$LOG" 2>&1 ||
             printResult 1 "File creation failed !"
@@ -187,7 +198,7 @@ function prepare_card #{{{
         printResult $? "Volume creation failed !"
         CARD=$(losetup --list | grep "$FILE" | cut -f 1 -d ' ')
     fi
-    echo -ne "\t- Partitioning: "
+    echo -ne "\t- Partition: "
     sfdisk "$CARD" >> "$LOG" 2>&1 <<EOF
     $(echo -e "$PARTITION_SCHEME")
 EOF
@@ -197,16 +208,16 @@ EOF
     else
         PART="$CARD"
     fi
-    echo -ne "\t- Reloading partition table: "
+    echo -ne "\t- Reload partition table: "
     partprobe >> "$LOG" 2>&1
     printResult $? "Reloading failed !"
-    echo -ne "\t- Formating boot (vfat): "
+    echo -ne "\t- Format boot (vfat): "
     mkfs.vfat -F 32 "${PART}"1 >> "$LOG" 2>&1
     printResult $? "vfat formating failed !"
-    echo -ne "\t- Formating root ($ROOT_FS): "
+    echo -ne "\t- Format root ($ROOT_FS): "
     $FORMAT_ROOT "${PART}"3 >> "$LOG" 2>&1
     printResult $? "$ROOT_FS formating failed !"
-    echo -ne "\t- Making swap: "
+    echo -ne "\t- Make swap: "
     mkswap "${PART}2"  >> "$LOG" 2>&1
     printResult $? "Swap formating failed !"
 } #}}}
@@ -214,7 +225,7 @@ EOF
 function mount_root #{{{
 {
     local PART
-    echo "* Mounting partitions:"
+    echo "* Mount partitions:"
     echo -ne "\t- root: "
     if [[ "$CARD" =~ "mmcblk" || "$CARD" =~ "loop" ]]; then
         PART="${CARD}p"
@@ -259,8 +270,9 @@ function setup_qemu #{{{
 function chroot_qemu #{{{
 {
     local DEVPTS_OPTS
+    local USER_CMD
     echo "* Chroot: "
-    echo -ne "\t- mount tools (dev, sys, proc): "
+    echo -ne "\t- Mount tools (dev, sys, proc): "
     for dir in "dev" "proc" "sys"; do
         mount -o bind {,"$WORK_DIR/$ROOT"}/"$dir" >> "$LOG" 2>&1 ||
             printResult 1 "Unable to mount $dir."
@@ -268,16 +280,22 @@ function chroot_qemu #{{{
     DEVPTS_OPTS="rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000"
     mount -o $DEVPTS_OPTS devpts "$WORK_DIR/$ROOT/dev/pts" -t devpts >> "$LOG" 2>&1
     printResult $? "Unable to mount /dev/pts."
-    echo -ne "\t- tweak to bypass bug qemu: "
+    echo -ne "\t- Tweak to bypass bug qemu: "
     echo "FEATURES=\"-pid-sandbox\"" >> "$WORK_DIR/$ROOT/etc/portage/make.conf" 2>> "$LOG"
     printResult $? "Unable to insert FEATURES in make.conf."
-    echo -ne "\t- execute tasks in the chroot: "
-    #cat 2>> "$LOG" << EOF | chroot "$WORK_DIR/$ROOT"
+    if [[ -n "$USER_NAME" ]]; then
+        USER_CMD="useradd -m -G $USER_GROUPS -s /bin/bash $USER_NAME;"
+        USER_CMD="$USER_CMD sed -i -E 's|$USER_NAME:[^:]*:|$USER_NAME:$USER_PW_HASH:|' /etc/shadow"
+    fi
+    echo -ne "\t- Execute tasks in the chroot: "
     chroot "$WORK_DIR/$ROOT" >> "$LOG" 2>&1 << EOF
-    $(cat "$CONFIG_DIR/postinst.conf")
+    $(cat "$TPL_DIR/default")
+    $(test -n "$USER_NAME" && echo "$USER_CMD")
+    $(test -n "$TPL_FILE" && cat "$TPL_DIR/$TPL_FILE")
+    exit
 EOF
     printResult $? "Some tasks failed in the chroot.\nCheck the logs."
-    echo -ne "\t- unmount tools: "
+    echo -ne "\t- Unmount tools: "
     for dir in "dev/pts" "dev" "proc" "sys"; do
         umount "$WORK_DIR/$ROOT/$dir" >> "$LOG" 2>&1 ||
             printResult 1 "Unable to mount $dir."
@@ -448,7 +466,7 @@ function get_kernel #{{{
 
 function get_contents #{{{
 {
-    echo "* Getting the contents:"
+    echo "* Get the contents:"
     get_firmwares
     get_stage3
     get_kernel
@@ -458,11 +476,11 @@ function get_contents #{{{
 
 function build_kernel #{{{
 {
-    echo "* Building kernel: "
+    echo "* Build kernel: "
     (
         cd "$WORK_DIR/linux" >> "$LOG" 2>&1 ||
             printResult 1 "Unable to go to the linux directory."
-        echo -ne "\t- Configuring: "
+        echo -ne "\t- Configure: "
         if [[ "$KERNEL_CONFIG" = "olddefconfig" ]]; then
             cp "$MY_CFG" .config >> "$LOG" 2>&1 ||
                 printResult 1 "Unable to copy your config file."
@@ -474,9 +492,12 @@ function build_kernel #{{{
             echo -e "# CONFIG_B43 is not set\n# CONFIG_B43LEGACY is not set" >> .config
             sed -i -E 's/^(CONFIG_CPU_FREQ_DEFAULT_GOV[A-Z_]*)=.*$/# \1 is not set/g' .config
             sed -i -E "s/^# (CONFIG_CPU_FREQ_DEFAULT_GOV_$DEFAULT_POWER_GOV) is not set/\1=y/" .config
+            if [[ "$ROOT_FS" = "f2fs" ]]; then
+                sed -i -E "s/^# (CONFIG_F2FS_FS_SECURITY) is not set/\1=y/" .config
+            fi
         fi
         printResult 0 ""
-        echo -ne "\t- Building: "
+        echo -ne "\t- Build: "
         IMG="zImage"
         [[ $MODE -eq 64 ]] && IMG="Image"
         ARCH="$MYARCH" CROSS_COMPILE="$AARCH-" make -j"$NBR_CORE" "$IMG" modules dtbs >> "$LOG" 2>&1
@@ -488,7 +509,7 @@ function install_firmware #{{{
 {
     local BRD_DIR
     local RES
-    echo -ne "\t- Installing firmware: "
+    echo -ne "\t- Install firmware: "
     cp -r "$WORK_DIR"/{firmware/boot/overlays,"$ROOT"/boot/} >> "$LOG" 2>&1 ||
         printResult 1 "Installing overlays failed !"
     for FILE in "${FILESET_MIN[@]}"; do
@@ -501,7 +522,7 @@ function install_firmware #{{{
     done
     printResult 0
     if [[ "$NO_WLAN" = false ]]; then
-        echo -ne "\t- Adding wifi firmware: "
+        echo -ne "\t- Add wifi firmware: "
         [[ -d "$WORK_DIR/$ROOT/lib/firmware/brcm" ]] || 
             {
                 mkdir -p "$WORK_DIR/$ROOT/lib/firmware/brcm" ||
@@ -513,11 +534,11 @@ function install_firmware #{{{
                 printResult 1 "Installing $FILE failed !"
         done
         printResult 0 ""
-        echo -ne "\t- Adding bluetooth firmware: "
+        echo -ne "\t- Add bluetooth firmware: "
         cp "$WORK_DIR"/{"$FW_BT_FILE","$ROOT/lib/firmware/brcm/"} >> "$LOG" 2>&1
         printResult $? "Installing $FW_BT_FILE failed !"
     fi
-    echo -ne "\t- Installing broadcom driver: "
+    echo -ne "\t- Install broadcom driver: "
     [[ $MODE -eq 32 ]] && BRD_DIR="" || BRD_DIR="broadcom/"
     cp "$WORK_DIR/"{"linux/arch/$MYARCH/boot/dts/${BRD_DIR}$BRCM_FILE","$ROOT/boot"} \
                 >> "$LOG" 2>&1
@@ -527,11 +548,11 @@ function install_firmware #{{{
 function install_kernel #{{{
 {
     local KRN_RELEASE
-    echo -ne "\t- Installing kernel: "
+    echo -ne "\t- Install kernel: "
     cp "$WORK_DIR/"{"linux/arch/$MYARCH/boot/Image","$ROOT/boot/$KERNEL_FILE"} \
                 >> "$LOG" 2>&1
     printResult $? "Installing kernel failed !"
-    echo -ne "\t- Installing kernel modules: "
+    echo -ne "\t- Install kernel modules: "
     (
         cd "$WORK_DIR/linux" >> "$LOG" 2>&1 ||
             printResult 1 "Unable to reach de kernel sources directory"
@@ -540,23 +561,23 @@ function install_kernel #{{{
         printResult $? "Installing kernel modules failed !"
     )
     KRN_RELEASE=$(cat "$WORK_DIR/linux/include/config/kernel.release")
-    echo -ne "\t- Correcting sources symbolic links in modules directory: "
+    echo -ne "\t- Correct sources symbolic links in modules directory: "
     rm "$WORK_DIR/$ROOT/lib/modules/$KRN_RELEASE"/{build,source} >> "$LOG" 2>&1 ||
         printResult 1 "Removing symbolic links failed !"
     ln -s /usr/src/linux "$WORK_DIR/$ROOT/lib/modules/$KRN_RELEASE/build" >> "$LOG" 2>&1 ||
         printResult 1 "Unable to create build symbolic link !"
     ln -s /usr/src/linux "$WORK_DIR/$ROOT/lib/modules/$KRN_RELEASE/source" >> "$LOG" 2>&1
     printResult $? "Unable to create source symbolic link !"
-    echo -ne "\t- Creating kernel source directory: "
+    echo -ne "\t- Create kernel source directory: "
     mkdir "$WORK_DIR/$ROOT/usr/src/$KRN_RELEASE" >> "$LOG" 2>&1 ||
         printResult 1 "Creating kernel source directory failed !"
     ln -s "$KRN_RELEASE" "$WORK_DIR/$ROOT/usr/src/linux" >> "$LOG" 2>&1
     printResult $? "Creating linux directory symbolic link failed !"
-    echo -ne "\t- Installing kernel config and Makefile: "
+    echo -ne "\t- Install kernel config and Makefile: "
     cp "$WORK_DIR"/{linux/{.config,Makefile},"$ROOT/usr/src/$KRN_RELEASE/"} >> "$LOG" 2>&1
     printResult $? "Copying files failed !"
     if [[ "$MOVE_KRN_SRC" = true ]]; then
-        echo -ne "\t- Installing kernel sources: "
+        echo -ne "\t- Install kernel sources: "
         (
             cd "$WORK_DIR/linux" >> "$LOG" 2>&1 ||
                 printResult 1 "Unable to reach the kernel source directory"
@@ -570,16 +591,16 @@ function install_kernel #{{{
 function populate #{{{
 {
     local FLAVOUR
-    echo "* Populating the root: "
+    echo "* Populate the root: "
     # stage 3
-    echo -ne "\t- Installing stage 3: "
+    echo -ne "\t- Install stage 3: "
     FLAVOUR=$(grep -v "^#" < "$WORK_DIR/latest-stage3-$MYARCH.txt" | cut -d " " -f 1)
     tar xpf "$WORK_DIR/${FLAVOUR#*/}" --xattrs-include='*.*' \
                     --numeric-owner -C "$WORK_DIR/$ROOT" >> "$LOG" 2>&1
     printResult $? "Extracting stage 3 failed !"
     # Portage
     if [[ "$ADD_PORTAGE" = true ]]; then
-        echo -ne "\t- Installing portage tree: "
+        echo -ne "\t- Install portage tree: "
         mkdir -p "$WORK_DIR/$ROOT/var/db/repos/gentoo" ||
             printResult 1 "Unable to create local gentoo repos !"
         tar xpf "$WORK_DIR/$PORTAGE_FILE" --strip-components=1 \
@@ -596,7 +617,7 @@ function fix_network #{{{
     local LCONTENT
     local LFILE
     if [[ "$NO_ETH" = false ]]; then
-        echo -ne "\t- Fixing Network (eth0): "
+        echo -ne "\t- Fix Network (eth0): "
         echo "config_eth0=\"dhcp\"" > "$WORK_DIR/$ROOT/etc/conf.d/net" 2>> "$LOG"
         (
             cd "$WORK_DIR/$ROOT/etc/init.d" >> "$LOG" 2>&1 || 
@@ -606,7 +627,7 @@ function fix_network #{{{
         )
     fi
     if [[ "$NO_WLAN" = false ]]; then
-        echo -ne "\t- Fixing Network (wlan0): "
+        echo -ne "\t- Fix Network (wlan0): "
         LCONTENT="config_wlan0=\"dhcp\"\nmodules_wlan0=\"!plug wpa_supplicant\""
         echo -e "$LCONTENT" >> "$WORK_DIR/$ROOT/etc/conf.d/net" 2>> "$LOG"
         (
@@ -630,6 +651,8 @@ function fix_network #{{{
                 printResult 1 "Switching to \"$WORK_DIR/$ROOT/etc/init.d\" failed"
             ln -s /etc/init.d/net.lo net.usb0 >> "$LOG" 2>&1 ||
                 printResult 1 "Linking network init script failed !"
+            ln -s /etc/init.d/net.usb0 ../runlevels/default/. >> "$LOG" 2>&1 ||
+                printResult 1 "Enabling usb0 interface failed !"
         )
         echo -e "modules=\"g_ether\"" >> "$WORK_DIR/$ROOT/etc/conf.d/modules" 2>> "$LOG"
         printResult $? "Unable to add g_ether to modules list to load"
@@ -644,7 +667,7 @@ function fix_network #{{{
         printResult $? "The copy failed."
     fi
     if [[ "$SSH" = true ]]; then
-        echo -ne "\t- Enabling ssh server: "
+        echo -ne "\t- Enable ssh server: "
         (
             cd "$WORK_DIR/$ROOT" >> "$LOG" 2>&1 ||
                 printResult 1 "Switching to \"$WORK_DIR/$ROOT\" failed"
@@ -670,10 +693,10 @@ function fix_network #{{{
             printResult $? "Enabling root connection on sshd failed !"
         fi
     fi
-    echo -ne "\t- Setting DNS server address: "
+    echo -ne "\t- Set DNS server address: "
     echo "nameserver $DNS" > "$WORK_DIR/$ROOT/etc/resolv.conf" 2>> "$LOG"
     printResult $? "Unable to fix the nameserver"
-    echo -ne "\t- Enabling time server client: "
+    echo -ne "\t- Enable time server client: "
     (
         cd "$WORK_DIR/$ROOT" >> "$LOG" 2>&1 ||
             printResult 1 "Switching to \"$WORK_DIR/$ROOT\" failed"
@@ -684,7 +707,7 @@ function fix_network #{{{
 
 function fix_time #{{{
 {
-    echo -ne "\t- Fixing Time: "
+    echo -ne "\t- Fix Time: "
     if [[ -f "$WORK_DIR/$ROOT/etc/runlevels/boot/hwclock" ]]; then
             rm "$WORK_DIR/$ROOT/etc/runlevels/boot/hwclock" >> "$LOG" 2>&1 ||
                 printResult 1 "Disabling hwclock service failed !"
@@ -695,7 +718,7 @@ function fix_time #{{{
         ln -s /etc/init.d/swclock ./etc/runlevels/boot/. >> "$LOG" 2>&1
         printResult $? "Enabling swclock service failed !"
     )
-    echo -ne "\t- Fixing Timezone: "
+    echo -ne "\t- Fix Timezone: "
     echo "$TZ" > "$WORK_DIR/$ROOT/etc/timezone" 2>> "$LOG"
     (
         cd "$WORK_DIR/$ROOT" >> "$LOG" 2>&1 ||
@@ -707,7 +730,7 @@ function fix_time #{{{
 
 function create_tarball #{{{
 {
-    echo -ne "* Creating the tarball: "
+    echo -ne "* Create the tarball: "
     tar -cJf "$WORK_DIR/$FILE_PREFIX$RPI_VERSION-$MODE.tar.xz" \
                                 -C "$WORK_DIR/$ROOT" ./ >> "$LOG" 2>&1
     printResult $? "Failed to create the file."
@@ -731,27 +754,46 @@ function fstab_builder #{{{
 
 function firstRun_builder #{{{
 {
-    echo -ne "\t- Installing firstRun script in /etc/local.d: "
+    local USER_CMD
+    local CLEAN_HASH
+    echo -ne "\t- Install firstRun script in /etc/local.d: "
     cp {"$CONFIG_DIR","$WORK_DIR/$ROOT/etc/local.d"}/firstRun.start 2>> "$LOG" ||
         printResult 1 "Failed to copy the content in the file"
+    if [[ -n "$USER_NAME" ]]; then
+        USER_CMD="useradd -m -G $USER_GROUPS -s /bin/bash $USER_NAME"
+        sed -i -E "s|#End|$USER_CMD\n#End|" "$WORK_DIR/$ROOT/etc/local.d/firstRun.start" 2>> "$LOG" ||
+            printResult 1 "Failed to add the new user $USER_NAME"
+        CLEAN_HASH=$(echo "$USER_PW_HASH" | sed -E 's/(\$|\/)/\\\\\1/g')
+        USER_CMD="sed -i -E \"s|$USER_NAME:\[\^:\]\*:|$USER_NAME:$CLEAN_HASH:|\" \/etc\/shadow"
+        sed -i "s/#End/$USER_CMD\n#End/" "$WORK_DIR/$ROOT/etc/local.d/firstRun.start" 2>> "$LOG" ||
+            printResult 1 "Failed to fix $USER_NAME password"
+    fi
     chmod +x "$WORK_DIR/$ROOT/etc/local.d/firstRun.start" >> "$LOG" 2>&1
     printResult $? "Failed to activate the script"
 } #}}}
 
 function tune #{{{
 {
-    echo "* Tuning system: "
+    echo "* Tune system: "
     if [[ "$USE_TARB" = false ]]; then
         FSTAB=$(sfdisk -l "$CARD" -o Device | grep "^$CARD")
-        echo -ne "\t- Tuning fstab: "
+        echo -ne "\t- Tune fstab: "
         fstab_builder "$FSTAB" > "$WORK_DIR/$ROOT/etc/fstab"
         printResult $? "fstab tuning failed !"
     elif [[ "$USE_MY_FSTAB" = true ]]; then
-        echo -ne "\t- Copying fstab: "
+        echo -ne "\t- Copy fstab: "
         cp "$FSTAB_FILE" "$WORK_DIR/$ROOT/etc/fstab" >> "$LOG" 2>&1
         printResult $? "Copy failed !"
     fi
-    echo -ne "\t- Tuning cmdline.txt: "
+    echo -ne "\t- Fix locales: "
+    echo "" > "$WORK_DIR/$ROOT/etc/locale.gen" >> "$LOG" 2>&1 ||
+        printResult 1 "Unable to clean locale.gen"
+    for MY_LOCALE in "${LOCALES[@]}"; do
+        echo "$MY_LOCALE" >> "$WORK_DIR/$ROOT/etc/locale.gen" 2>> "$LOG" ||
+            printResult 1 "Unable to add locale values."
+    done
+    printResult 0 ""
+    echo -ne "\t- Tune cmdline.txt: "
     if [[ "$USE_TARB" = true && "$USE_MY_FSTAB" = false ]]; then
         echo "root=YOUR_ROOT_PARTITION_HERE rootfstype=YOUR_ROOT_FS_HERE rootwait" > "$WORK_DIR/$ROOT/boot/cmdline.txt"
         printResult $? "cmdline.txt file creation failed !"
@@ -760,15 +802,15 @@ function tune #{{{
             sed -E 's/([^ ]*) ([^ ]*) ([^ ]*)/root=\1 rootfstype=\3 rootwait/' > "$WORK_DIR/$ROOT/boot/cmdline.txt"
         printResult $? "cmdline.txt file installation failed !"
     fi
-    echo -ne "\t- Fixing root password: "
+    echo -ne "\t- Fix root password: "
     sed -i "s|root:\*:|root:$ROOT_PW_HASH:|" "$WORK_DIR/$ROOT/etc/shadow"
     printResult $? "Fixing root password failed !"
 
-    echo -ne "\t- Tuning inittab: "
+    echo -ne "\t- Tune inittab: "
     sed -E -i "s|^(f0:12345.*)$|#\1|" "$WORK_DIR/$ROOT/etc/inittab" >> "$LOG" 2>&1
     printResult $? "Preventing serial console allotment failed !"
 
-    echo -ne "\t- Tuning config.txt: "
+    echo -ne "\t- Tune config.txt: "
     if [[ "$MY_CFG_TXT" = true ]]; then
         cp "$CONFIG_TXT_CONTENT" "$WORK_DIR/$ROOT/boot/config.txt" 2>> "$LOG"
         printResult $? "Config file installing failed !"
@@ -799,24 +841,24 @@ function tune #{{{
         echo -e "$VC_CFG" >> "$WORK_DIR/$ROOT/boot/config.txt" 2>> "$LOG"
         printResult $? "Add options failed !"
     else
-        echo -ne "\t- Fixing video memory: "
+        echo -ne "\t- Fixe video memory: "
         echo "mem=16" >> "$WORK_DIR/$ROOT/boot/config.txt" 2>> "$LOG"
         printResult $? "Add options failed !"
     fi
 
-    echo -ne "\t- Tuning make.conf: "
+    echo -ne "\t- Tune make.conf: "
     if [[ "$USE_VC" = true ]]; then
-        echo -e "VIDEO_CARDS=\"$VC\"" >> "$WORK_DIR/$ROOT/etc/portage/make.conf" 2> "$LOG" ||
+        echo -e "VIDEO_CARDS=\"$VC\"" >> "$WORK_DIR/$ROOT/etc/portage/make.conf" 2>> "$LOG" ||
             printResult 0 "Fixing VIDEO_CARDS value failed !"
     fi
     sed -E -i "s|^(CFLAGS.*)$|CFLAGS=\"$MCFLAGS\"\nMAKEOPTS=\"-j$NB_JOBS\"|" \
                         "$WORK_DIR/$ROOT/etc/portage/make.conf" >> "$LOG" 2>&1
     printResult $? "Fixing CFLAGS and MAKEOPTS failed !"
 
-    echo -ne "\t- Fixing Keymap: "
+    echo -ne "\t- Fix Keymap: "
     echo "keymap=\"$KEYMAPS\"" > "$WORK_DIR/$ROOT/etc/conf.d/keymaps" 2>> "$LOG"
     printResult $? "Fixing keymap failed !"
-    echo -ne "\t- Fixing Hostname: "
+    echo -ne "\t- Fix Hostname: "
     echo "hostname=\"$HN\"" > "$WORK_DIR/$ROOT/etc/conf.d/hostname" 2>> "$LOG"
     printResult $? "Fixing hostname failed !"
     if [[ "$NO_WLAN" = false || "$NO_ETH" = false || "$USE_TETHER" = true ]]; then
@@ -824,7 +866,7 @@ function tune #{{{
     else
         [[ -f "$WORK_DIR/$ROOT/etc/runlevels/default/netmount" ]] &&
             {
-                echo -ne "\t- Disabling netmount service: "
+                echo -ne "\t- Disable netmount service: "
                 rm "$WORK_DIR/$ROOT/etc/runlevels/default/netmount" >> "$LOG" 2>&1
                 printResult $? "Disabling netmount failed !"
             }
@@ -834,11 +876,11 @@ function tune #{{{
 
 function clean #{{{
 {
-    echo "* Cleaning system: "
+    echo "* Clean system: "
     if [[ "$USE_TARB" = false ]]; then
-        echo -ne "\t- Syncing filesystem: "
+        echo -ne "\t- Sync filesystem: "
         sync >> "$LOG" 2>&1
-        printResult $? "Syncing failed !" 0
+        printResult $? "Sync failed !" 0
         echo -ne "\t- Unmounting $CARD: "
         for dir in $(mount | grep "$WORK_DIR/$ROOT" | cut -f 3 -d " " | sort -r); do 
             umount "$dir" >> "$LOG" 2>&1 ||
@@ -846,18 +888,18 @@ function clean #{{{
         done
         printResult 0 "" 0
         if [[ "$USE_IMG" = true && ! "$CARD" = "loopback" ]]; then
-            echo -ne "\t- Destroying the virtual device $CARD: "
+            echo -ne "\t- Destroy the virtual device $CARD: "
             losetup -d "$CARD" >> "$LOG" 2>&1
             printResult $? "Destroying $CARD failed !" 0
         fi
     else
-        echo -ne "\t- Unmounting $CARD: "
+        echo -ne "\t- Unmount $CARD: "
         for dir in $(mount | grep "$WORK_DIR/$ROOT" | cut -f 3 -d " " | sort -r); do 
             umount "$dir" >> "$LOG" 2>&1 ||
                 printResult 1 "Unmounting $dir failed !" 0
         done
         printResult 0 "" 0
-        echo -ne "\t- Cleaning tarball files: "
+        echo -ne "\t- Clean tarball files: "
         rm -Rf "${WORK_DIR:?}/${ROOT:?}/" >> "$LOG" 2>&1
         printResult $? "Unable to delete the files." 0
     fi
@@ -865,6 +907,9 @@ function clean #{{{
 
 function show_help #{{{
 {
+    local LS_TPL
+    # shellcheck disable=SC2012
+    LS_TPL=$(ls -x $TPL_DIR | sed "s/default *//")
     echo -e "usage: ${0#*/} <options>
 Option's list:
 \t-h\t\tDisplay this help message\n
@@ -901,6 +946,10 @@ Option's list:
 \t\t\tActual value: $MODE\n
 \t-F <file>\tUse your own fstab file.
 \t\t\tOnly for use in conjonction with the -T option.\n
+\t-T <template>\tUse a template to build a specific machine.
+\t\t\tListe: $LS_TPL.\n
+\t-u <username>\tCreate a users with the specified username.
+\t\t\tYou will be asked for the password.\n
 \t--add-kernel-src\tCopy the kernel sources on the card,
 \t\t\t\tBeware that this will run make distclean on the actual sources.
 \t\t\t\tActual value is \"$MOVE_KRN_SRC\"\n
@@ -909,9 +958,9 @@ Option's list:
 \t--build-image\t\tBuild an image instead of writing directly on the media.\n
 \t--build-tarball\t\tBuild a tarball instead of writing directly on the media.
 \t\t\t\tIf you want a valid fstab, you have to privide it with the -F option.\n
-\t--config-serial\t\tEnable serial communications.
+\t--enable-serial\t\tEnable serial communications.
 \t\t\t\tMight disable bluetooth on some card.\n
-\t--config-usb-tether\tEnable usb tethering.
+\t--enable-usb-tether\tEnable usb tethering.
 \t\t\t\tNeed some tweak on your computer.\n
 \t--enable-sshd\t\tEnable sshd service with root login allowed.\n
 \t--set-root-pw\t\tChoose your root password. You will be asked to type it.
@@ -946,23 +995,31 @@ function build_workplace #{{{
 
 function get_password #{{{
 {
-    if [[ "$USE_MY_PW" = true ]]; then
-        echo -n "* Setting password (Type your pi password and hit enter): "
-        stty -echo
-        ROOT_PW_HASH=$(mkpasswd --method=SHA-512 --stdin 2>> "$LOG")
-        stty echo
+    if [[ -z $1 ]]; then
+        if [[ "$USE_MY_PW" = true ]]; then
+            echo -n "* Set root password (Type your pi password and hit enter): "
+            stty -echo
+            ROOT_PW_HASH=$(mkpasswd --method=SHA-512 --stdin 2>> "$LOG")
+            stty echo
+        else
+            echo -n "* Use the default password for root ($ROOT_PW): "
+            ROOT_PW_HASH=$(mkpasswd --method=SHA-512 "$ROOT_PW" 2>> "$LOG")
+        fi
     else
-        echo -n "* Using the default password ($ROOT_PW): "
-        ROOT_PW_HASH=$(mkpasswd --method=SHA-512 "$ROOT_PW" 2>> "$LOG")
+        echo -n "* Set user '$USER_NAME' password (Type your pi password and hit enter): "
+        stty -echo
+        USER_PW_HASH=$(mkpasswd --method=SHA-512 --stdin 2>> "$LOG")
+        stty echo
     fi
     printResult 0
 } #}}}
 
 # Retrieve the last kernel version
-KRN_VERSION=$(git ls-remote "$KERNEL" | grep -v "pull\|patch" | grep head | 
-            cut -d '/' -f 3 | grep "^rpi-[0-9].*y$" | sort -rV | head -n 1)
+LST_KRN_VERSION=$(git ls-remote "$KERNEL" | grep -v "pull\|patch" | grep head | 
+            cut -d '/' -f 3 | grep "^rpi-[0-9].*y$" | sort -rV)
+KRN_VERSION=$(echo "$LST_KRN_VERSION" | head -n 1)
 
-while getopts "hb:m:B:d:k:c:H:t:f:C:M:F:w:-:" OPTION; do #{{{
+while getopts "hb:m:B:d:k:c:H:t:f:C:M:F:w:T:u:-:" OPTION; do #{{{
     case $OPTION in
         h ) show_help && exit 0 ;;
         b ) RPI_VERSION="$OPTARG"
@@ -970,18 +1027,31 @@ while getopts "hb:m:B:d:k:c:H:t:f:C:M:F:w:-:" OPTION; do #{{{
                 echo "Error: $RPI_VERSION is not a valid board."
                 exit 1
             fi ;;
-        m ) WP_TMP="$OPTARG" ;;
-        B ) KRN_VERSION="$OPTARG" ;;
-        d ) CARD="$OPTARG" ;;
-        k ) KEYMAPS="$OPTARG" ;;
+        m ) [[ -n "$OPTARG" ]] && WP_TMP="$OPTARG" ;;
+        B ) if [[ -z "$OPTARG" ]] || 
+                    ! echo "$LST_KRN_VERSION" | grep -q "$OPTARG"; then
+                echo "$OPTARG is not a valid branch."
+                exit 1
+            fi
+            KRN_VERSION="$OPTARG" ;;
+        d ) if ! [[ -b "$OPTARG" ]]; then
+                echo "$OPTARG is not a valid device."
+                exit 1
+            fi
+            CARD="$OPTARG" ;;
+        k ) [[ -n "$OPTARG" ]] && KEYMAPS="$OPTARG" ;;
         c ) if ! [[ -f "$OPTARG" ]]; then
                 echo "$OPTARG is not a file."
                 exit 1
             fi
             MY_CFG=$(readlink -f "$OPTARG") ;;
-        H ) HN="$OPTARG" ;;
-        t ) TZ="$OPTARG" ;;
-        f ) ROOT_FS="$OPTARG" ;;
+        H ) [[ -n "$OPTARG" ]] && HN="$OPTARG" ;;
+        t ) [[ -n "$OPTARG" ]] && TZ="$OPTARG" ;;
+        f ) if [[ "$OPTARG" != "ext4" && "$OPTARG" != "f2fs" ]]; then
+                echo "-f allowed values are: ext4 and f2fs."
+                exit 1
+            fi
+            ROOT_FS="$OPTARG" ;;
         C ) if ! [[ -f "$OPTARG" ]]; then
                 echo "$OPTARG is not a file."
                 exit 1
@@ -1004,9 +1074,20 @@ while getopts "hb:m:B:d:k:c:H:t:f:C:M:F:w:-:" OPTION; do #{{{
                 exit 1
             fi
             WPA_SUPP_FILE=$(readlink -f "$OPTARG") ;;
+        T ) if ! [[ -f "$TPL_DIR/$OPTARG" ]]; then
+                echo "$OPTARG is not a template."
+                exit 1
+            fi
+            TPL_FILE="$OPTARG" ;;
+        u ) if [[ -z "$OPTARG" ]] ||
+                    ! echo "$OPTARG" | grep -qE "$VALID_USERNAME"; then
+                echo "A username cannot be empty or you use a bad username."
+                exit 1
+            fi
+            USER_NAME="$OPTARG" ;;
         - ) case $OPTARG in
                 add-kernel-src ) MOVE_KRN_SRC=true ;;
-                add-portage ) ADD_PORTAGE=true ;;
+                no-portage ) ADD_PORTAGE=false ;;
                 build-image ) USE_IMG=true
                                 CARD=loopback ;;
                 build-tarball ) USE_TARB=true
@@ -1023,6 +1104,7 @@ while getopts "hb:m:B:d:k:c:H:t:f:C:M:F:w:-:" OPTION; do #{{{
     esac
 done #}}}
 
+# shellcheck disable=SC1091
 source "$CONFIG_DIR/rpi${RPI_VERSION}.conf"
 [[ -n "$MY_CFG" ]] && KERNEL_CONFIG="olddefconfig"
 
@@ -1054,6 +1136,7 @@ announce
 touch "$LOG" > /dev/null 2>&1
 test_requirements
 get_password
+test -n "$USER_NAME" && get_password "$USER_NAME"
 $GET_CONTENT && get_contents
 $BUILDK && build_kernel
 if [[ "$USE_TARB" = false ]]; then
@@ -1065,7 +1148,8 @@ $TUNE && tune
 if [[ "$USE_QEMU" = true ]]; then
     setup_qemu
     chroot_qemu
-elif [[ "$NO_ETH" = false ]] || [[ "$NO_WLAN" = false ]]; then
+elif [[ "$NO_ETH" = false ]] || [[ "$NO_WLAN" = false ]] || 
+        [[ "$USE_TETHER" = true ]]; then
     firstRun_builder
 fi
 $USE_TARB && create_tarball

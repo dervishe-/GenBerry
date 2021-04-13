@@ -1,0 +1,11 @@
+locale-gen
+emerge --sync
+emerge -uD --newuse @world
+echo "media-libs/raspberrypi-userland-bin raspberrypi-videocore-bin" >> /etc/portage/package.license
+emerge -uD raspberrypi-userland-bin dhcpcd
+rc-update add dhcpcd default
+if [[ -d /etc/wpa_supplicant ]]; then
+    emerge -uD wpa_supplicant
+    rc-update add wpa_supplicant default
+fi
+rm /var/cache/distfiles/*

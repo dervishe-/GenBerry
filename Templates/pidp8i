@@ -1,0 +1,57 @@
+USER=pi
+# Get dependencies
+emerge -uD dev-python/pip pexpect app-misc/screen rpcbind sudo pyyaml
+
+# Create the pi user required by the pidp8
+useradd -m -G users,wheel,audio,adm,dialout,cdrom,video,input -s /bin/bash "$USER"
+sed -E -i "s/^(# )?(\%wheel.*)$/\2/" /etc/sudoers
+cat <<- EOF >> /home/pi/.bash_profile
+
+procs=\`sudo screen -ls pidp | egrep '[0-9]+\.pidp' | wc -l\`
+if [[ \$procs -ne 0 ]]; then
+    sudo screen -r
+fi
+EOF
+
+# Get server
+cd "/home/$USER/"
+sudo -u "$USER" mkdir "/home/$USER/pidp8i"
+sudo -u "$USER" wget -O pidp8i.tar.gz https://tangentsoft.com/pidp8i/tarball
+sudo -u "$USER" tar -xvf pidp8i.tar.gz -C ./pidp8i/
+cd ./pidp8i
+sed -e 's/lncurses/& -ltinfo/' -i ./Makefile.in
+sudo -u "$USER" ./configure
+sudo -u "$USER" tools/mmake
+make install
+
+#Create service launcher (start/stop) in /etc/local.d
+cat <<- EOF > /etc/local.d/pidp8i.start
+#!/bin/bash
+procs=\`screen -ls pidp8i | egrep '[0-9]+\.pidp8i' | wc -l\`
+if [[ \$procs -gt 0 ]]; then
+    echo "PiDP-8i is already running, not starting again." >&2
+    exit 0
+fi
+cd /opt/pidp8i/bin
+screen ./pidp8i start
+exit 0
+EOF
+chmod +x /etc/local.d/pidp8i.start
+
+
+cat <<- EOF > /etc/local.d/pidp8i.stop
+#!/bin/bash
+procs=\`screen -ls pidp8i | egrep '[0-9]+\.pidp8i' | wc -l\`
+if [[ \$procs -eq 0 ]]; then
+    echo "PiDP-8i is not running." >&2
+    exit 0
+fi
+screen -S pidp8i -X quit
+/opt/pidp8i/bin/pidp8i stop
+exit 0
+EOF
+chmod +x /etc/local.d/pidp8i.stop
+
+# Little house-keeping
+rm "/home/$USER/pidp8i.tar.gz"
+rm /var/cache/distfiles/*
