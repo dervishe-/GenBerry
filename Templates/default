@@ -2,7 +2,10 @@ locale-gen
 emerge --sync
 emerge -uD --newuse @world
 echo "media-libs/raspberrypi-userland-bin raspberrypi-videocore-bin" >> /etc/portage/package.license
-emerge -uD raspberrypi-userland-bin dhcpcd
+# temporary little workaround only for 64bit
+[[ file -b /sbin/init | grep aarch64 > /dev/null 2>&1 ]] &&
+    echo "=media-libs/raspberrypi-userland-bin-1.20201201 *" >> /etc/portage/package.accept_keywords
+emerge -uD dhcpcd raspberrypi-userland-bin
 rc-update add dhcpcd default
 if [[ -d /etc/wpa_supplicant ]]; then
     emerge -uD wpa_supplicant
