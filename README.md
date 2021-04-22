@@ -65,13 +65,13 @@ ones without any arguments
 
 ### Examples
 
-* Create a simple sdcard for rpi4 on /dev/mmcblk0 with portage tree installed:
+* Create a simple sdcard for rpi4 on /dev/mmcblk0 installed:
 ```bash
-sudo ./GenBerry --add-portage
+sudo ./GenBerry
 ```
-* Create an image for rPi 3B+ in 32 bit mode with f2fs portage and the kernel sources:
+* Create an image for rPi 3B+ in 32 bit mode with f2fs and the kernel sources:
 ```bash
-sudo ./GenBerry --add-portage --build-image -M 32 -f f2fs -b 3P --add-kernel-src
+sudo ./GenBerry --build-image -M 32 -f f2fs -b 3P --add-kernel-src
 ```
 This will generate a GenBerry_3P-32.img file in the work dir. 
 * -M 32 means select 32 bit mode
@@ -140,10 +140,11 @@ far from perfect ;) )
 * Update kernel helper
 * Boot on USB
 * For Pi4 activate USB attached SCSI
-* Add userland utilities form RaspberryOS
 * Install the script
 * Access point template
 * Better sources managment for the rpi firmwares
+* Add possibility to use systemd
+
 
 ## Disclaimer
 
