@@ -953,8 +953,7 @@ Option's list:
 \t--add-kernel-src\tCopy the kernel sources on the card,
 \t\t\t\tBeware that this will run make distclean on the actual sources.
 \t\t\t\tActual value is \"$MOVE_KRN_SRC\"\n
-\t--add-portage\t\tCopy the portage tree,
-\t\t\t\tActual value is \"$ADD_PORTAGE\"\n
+\t--no-portage\t\tDon't copy the portage tree\n
 \t--build-image\t\tBuild an image instead of writing directly on the media.\n
 \t--build-tarball\t\tBuild a tarball instead of writing directly on the media.
 \t\t\t\tIf you want a valid fstab, you have to privide it with the -F option.\n
