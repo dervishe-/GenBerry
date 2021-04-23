@@ -1,0 +1,76 @@
+USER=pi
+# Get dependencies
+echo "app-admin/sudo -sendmail" >> /etc/portage/package.use/sudo
+echo "media-libs/libgphoto2 jpeg" >> /etc/portage/package.use/libgphoto2
+
+file -b /sbin/init | grep aarch64 > /dev/null 2>&1 ||
+    (
+        echo "=media-libs/opencv-4.5.1 ~arm" >> /etc/portage/package.accept_keywords
+        echo "=dev-cpp/eigen-3.3.9 ~arm" >> /etc/portage/package.accept_keywords
+    )
+
+emerge -uD cmake dev-python/pip virtualenv dev-libs/libyaml libjpeg-turbo libv4l sudo ffmpeg media-libs/opencv media-libs/libgphoto2
+
+# Create the user required
+useradd -m -G users,wheel,audio,adm,dialout,cdrom,video,input,tty,uucp -s /bin/bash "$USER"
+sed -E -i "s/^(# )?(\%wheel.*)$/\2/" /etc/sudoers
+
+## raspicam
+cd /opt
+wget https://github.com/rmsalinas/raspicam/archive/refs/heads/master.zip -O raspicam.zip
+unzip raspicam.zip
+cd raspicam-master/
+mkdir build && cd build
+cmake ..
+make install
+cd /opt
+rm -Rf ./raspicam-master
+
+# mjpg-streamer
+cd /opt
+wget https://github.com/jacksonliam/mjpg-streamer/archive/refs/heads/master.zip -O mjpg-streamer.zip
+unzip mjpg-streamer.zip
+cd ./mjpg-streamer-master/mjpg-streamer-experimental
+make
+make install
+cd /opt
+rm -Rf ./mjpg-streamer-master
+
+# octoprint
+cd "/home/$USER"
+sudo -u "$USER" -- /bin/bash -c "
+mkdir OctoPrint && cd OctoPrint
+python3 -m venv venv
+source venv/bin/activate
+pip install pip --upgrade
+pip install octoprint"
+
+#Create service launcher (start/stop) in /etc/local.d
+cat <<- EOF > /etc/local.d/octoprint.start
+#!/bin/bash
+PORT=8080
+DEVICE=/dev/video0
+DIMS=640x480
+FRATE=5
+sudo -u "$USER" /usr/local/bin/mjpg_streamer -o "output_http.so -w ./www -p \$PORT" -i "input_uvc.so -d \$DEVICE -r \$DIMS -f \$FRATE" &
+echo "\$!" > /tmp/mjpg_streamer.pid
+sudo -u "$USER" "/home/$USER/OctoPrint/venv/bin/octoprint" serve &
+exit 0
+EOF
+chmod +x /etc/local.d/octoprint.start
+
+cat <<- EOF > /etc/local.d/octoprint.stop
+#!/bin/bash
+[[ -f /tmp/mjpg_streamer.pid ]] &&
+    (
+        kill \$(cat /tmp/mjpg_streamer.pid)
+        rm /tmp/mjpg_streamer.pid
+    )
+killall octoprint
+exit 0
+EOF
+chmod +x /etc/local.d/octoprint.stop
+
+# Little house-keeping
+rm /opt/{raspicam,mjpg-streamer}.zip
+rm /var/cache/distfiles/*
