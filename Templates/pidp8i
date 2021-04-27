@@ -1,6 +1,6 @@
 USER=pi
 # Get dependencies
-emerge -uD dev-python/pip pexpect app-misc/screen rpcbind sudo pyyaml
+emerge dev-python/pip pexpect app-misc/screen rpcbind sudo pyyaml
 
 # Create the pi user required by the pidp8
 useradd -m -G users,wheel,audio,adm,dialout,cdrom,video,input -s /bin/bash "$USER"
@@ -15,14 +15,15 @@ EOF
 
 # Get server
 cd "/home/$USER/"
-sudo -u "$USER" mkdir "/home/$USER/pidp8i"
-sudo -u "$USER" wget -O pidp8i.tar.gz https://tangentsoft.com/pidp8i/tarball
-sudo -u "$USER" tar -xvf pidp8i.tar.gz -C ./pidp8i/
+sudo -u "$USER" -- /bin/bash -c "
+mkdir /home/$USER/pidp8i
+wget -O pidp8i.tar.gz https://tangentsoft.com/pidp8i/tarball
+tar -xvf pidp8i.tar.gz -C ./pidp8i/
 cd ./pidp8i
 sed -e 's/lncurses/& -ltinfo/' -i ./Makefile.in
-sudo -u "$USER" ./configure
-sudo -u "$USER" tools/mmake
-make install
+./configure
+tools/mmake
+make install"
 
 #Create service launcher (start/stop) in /etc/local.d
 cat <<- EOF > /etc/local.d/pidp8i.start

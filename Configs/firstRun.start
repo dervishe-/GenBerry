@@ -6,9 +6,10 @@ if [[ $(ping -c 3 1.1.1.1) ]]; then # via usb0 or eth0
     rc-service busybox-ntpd restart
     emerge -uD --newuse @world
     # temporary little workaround only for 64bit
+    PKG=raspberrypi-userland-bin
     file -b /sbin/init | grep aarch64 > /dev/null 2>&1 &&
-        echo ">=media-libs/raspberrypi-userland-bin-1.20201201 *" >> /etc/portage/package.accept_keywords
-    emerge raspberrypi-userland-bin
+        PKG=raspberrypi-userland
+    emerge "$PKG" i2c-tools
     if [[ $(ls /sys/class/net/eth0 2> /dev/null) ]] || 
             [[ $(ls /sys/class/net/wlan0 2> /dev/null) ]]; then
         emerge dhcpcd
