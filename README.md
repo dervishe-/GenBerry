@@ -65,7 +65,7 @@ ones without any arguments
 
 ### Examples
 
-* Create a simple sdcard for rpi4 on /dev/mmcblk0 installed:
+* Create a simple sdcard for rpi4 on /dev/mmcblk0:
 ```bash
 sudo ./GenBerry
 ```
