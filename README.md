@@ -99,16 +99,6 @@ board as firstRun.start emerge some packages. Let the things go quietly at its e
 
 After this reboot, your pi will be available thrue eth0 or wlan0 if you gave a 
 `wpa_supplicant.conf` in option.
-Once you're logged in, just execute this few commands, to make the things proper:
-
-```bash
-emerge --sync
-emerge -auD --newuse @world
-emerge -av --depclean
-shutdown -r now
-```
-Then, you just will have to customize your new system :)
-
 
 ## Participate
 
