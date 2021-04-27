@@ -1,5 +1,5 @@
 # Get dependencies
-emerge -uD libsdl2 libpcap readline app-misc/screen rpcbind sudo
+emerge libsdl2 libpcap readline app-misc/screen rpcbind sudo
 
 # Create the pi user required by the pidp11
 useradd -m -G users,wheel,audio,adm,dialout,cdrom,video,input -s /bin/bash pi

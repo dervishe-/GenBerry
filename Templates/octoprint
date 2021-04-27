@@ -9,7 +9,7 @@ file -b /sbin/init | grep aarch64 > /dev/null 2>&1 ||
         echo "=dev-cpp/eigen-3.3.9 ~arm" >> /etc/portage/package.accept_keywords
     )
 
-emerge -uD cmake dev-python/pip virtualenv dev-libs/libyaml libjpeg-turbo libv4l sudo ffmpeg media-libs/opencv media-libs/libgphoto2
+emerge cmake dev-python/pip virtualenv dev-libs/libyaml libjpeg-turbo libv4l sudo ffmpeg media-libs/opencv media-libs/libgphoto2
 
 # Create the user required
 useradd -m -G users,wheel,audio,adm,dialout,cdrom,video,input,tty,uucp -s /bin/bash "$USER"
