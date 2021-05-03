@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 locale-gen
 echo "media-libs/raspberrypi-userland-bin raspberrypi-videocore-bin" >> /etc/portage/package.license
+file -b /sbin/init | grep aarch64 > /dev/null 2>&1 &&
+    echo "sys-apps/i2c-tools ~arm64" >> /etc/portage/package.accept_keywords
 [[ $(ls /sys/class/net/eth0 2> /dev/null) ]] && busybox udhcpc -i eth0
 if [[ $(ping -c 3 1.1.1.1) ]]; then # via usb0 or eth0
     rc-service busybox-ntpd restart

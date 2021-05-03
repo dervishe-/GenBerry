@@ -2,6 +2,8 @@ locale-gen
 emerge --sync
 emerge -uD --newuse @world
 echo "media-libs/raspberrypi-userland-bin raspberrypi-videocore-bin" >> /etc/portage/package.license
+file -b /sbin/init | grep aarch64 > /dev/null 2>&1 &&
+    echo "sys-apps/i2c-tools ~arm64" >> /etc/portage/package.accept_keywords
 # temporary little workaround only for 64bit
 PKG=raspberrypi-userland-bin
 file -b /sbin/init | grep aarch64 > /dev/null 2>&1 &&
