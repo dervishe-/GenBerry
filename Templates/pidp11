@@ -1,8 +1,18 @@
 # Get dependencies
-emerge libsdl2 libpcap readline app-misc/screen rpcbind sudo
+mkdir /etc/portage/sets
+cat <<- EOF > /etc/portage/sets/pidp11
+media-libs/libsdl2
+net-libs/libpcap
+sys-libs/readline
+app-misc/screen
+net-nds/rpcbind
+app-admin/sudo
+EOF
+
+emerge @pidp11
 
 # Create the pi user required by the pidp11
-useradd -m -G users,wheel,audio,adm,dialout,cdrom,video,input -s /bin/bash pi
+useradd -m -G users,wheel,audio,adm,dialout,cdrom,video,input,uucp -s /bin/bash pi
 sed -E -i "s/^(# )?(\%wheel.*)$/\2/" /etc/sudoers
 
 # Get server
